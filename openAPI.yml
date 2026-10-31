@@ -1,0 +1,575 @@
+openapi: 3.1.0
+info:
+  title: Uniform App — B2C / B2B Order Management API
+  version: 1.0.0
+  summary: Contrat API REST de l'application uniform-app synchronisant les commandes comptoir B2C (espèces) et les approvisionnements fournisseurs B2B.
+
+servers:
+  - url: http://localhost:8080
+    description: Serveur de développement Quarkus 3.x (uniform-app)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/admin/clients:
+    get:
+      operationId: listClients
+      summary: Lister tous les clients configurés (ROLE_ADMIN)
+      responses:
+        '200':
+          description: Liste des clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+    post:
+      operationId: createClient
+      summary: Créer un nouveau client avec son MOQ dédié (ROLE_ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClientRequest'
+      responses:
+        '201':
+          description: Client créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+
+  /api/v1/admin/clients/{clientId}/moq:
+    patch:
+      operationId: updateClientMoq
+      summary: Modifier le MOQ d'un client (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMoqRequest'
+      responses:
+        '200':
+          description: MOQ mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientResponse'
+
+  /api/v1/admin/clients/{clientId}/catalog-items:
+    post:
+      operationId: createCatalogItem
+      summary: Ajouter un article personnalisé au catalogue d'un client (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCatalogItemRequest'
+      responses:
+        '201':
+          description: Article créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCatalogItemResponse'
+
+  /api/v1/clients/{clientId}/catalog-items:
+    get:
+      operationId: listClientCatalogItems
+      summary: Consulter le catalogue B2C d'un client (ROLE_USER & ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      responses:
+        '200':
+          description: Catalogue B2C
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/B2cCatalogItemResponse'
+
+  /api/v1/clients/{clientId}/stocks:
+    get:
+      operationId: listClientStocks
+      summary: Consulter le stock disponible dédié au client
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      responses:
+        '200':
+          description: Stock du client
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClientStockResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders:
+    get:
+      operationId: listB2cOrders
+      summary: Lister les commandes B2C d'un client
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      responses:
+        '200':
+          description: Liste des commandes B2C
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/B2cOrderSummaryResponse'
+    post:
+      operationId: createB2cOrder
+      summary: Initialiser une commande B2C au statut IN_PROGRESS
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      responses:
+        '201':
+          description: Commande B2C créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderDetailResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}:
+    get:
+      operationId: getB2cOrderById
+      summary: Détail complet d'une commande B2C
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+      responses:
+        '200':
+          description: Détail commande B2C
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderDetailResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}/lines:
+    post:
+      operationId: addB2cOrderLine
+      summary: Ajouter une ligne payée comptant en espèces (irréversible) et générer le reçu PDF
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddB2cOrderLineRequest'
+      responses:
+        '201':
+          description: Ligne ajoutée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderLineResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}/lines/{lineId}/receipt-pdf:
+    get:
+      operationId: downloadB2cLineReceiptPdf
+      summary: Télécharger le reçu PDF d'une ligne B2C
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+        - $ref: '#/components/parameters/B2cLineIdParam'
+      responses:
+        '200':
+          description: Flux PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}/move-to-production:
+    post:
+      operationId: moveB2cOrderToProduction
+      summary: Passer la commande B2C en IN_PRODUCTION et créer le Bon de Commande B2B en DRAFT (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+      responses:
+        '200':
+          description: Statut IN_PRODUCTION activé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderDetailResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}/move-to-delivery:
+    post:
+      operationId: moveB2cOrderToDelivery
+      summary: Passer la commande B2C en IN_DELIVERY après réception du stock B2B (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+      responses:
+        '200':
+          description: Statut IN_DELIVERY activé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderDetailResponse'
+
+  /api/v1/clients/{clientId}/b2c-orders/{orderId}/lines/{lineId}/deliver:
+    post:
+      operationId: markB2cOrderLineDelivered
+      summary: Pointer la remise d'une ligne B2C à l'acheteur et débiter le stock client
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2cOrderIdParam'
+        - $ref: '#/components/parameters/B2cLineIdParam'
+      responses:
+        '200':
+          description: Ligne livrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2cOrderDetailResponse'
+
+  /api/v1/clients/{clientId}/b2b-orders:
+    get:
+      operationId: listB2bPurchaseOrders
+      summary: Lister les Bons de Commande Fournisseurs B2B d'un client (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+      responses:
+        '200':
+          description: Liste B2B
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/B2bPurchaseOrderResponse'
+
+  /api/v1/clients/{clientId}/b2b-orders/{b2bOrderId}/lines/{b2bLineId}:
+    put:
+      operationId: updateB2bLineFinalQuantity
+      summary: Ajuster la quantité définitive à commander au fournisseur (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2bOrderIdParam'
+        - name: b2bLineId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateB2bFinalQuantityRequest'
+      responses:
+        '200':
+          description: Quantité mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2bPurchaseOrderResponse'
+
+  /api/v1/clients/{clientId}/b2b-orders/{b2bOrderId}/confirm-order:
+    post:
+      operationId: confirmB2bPurchaseOrder
+      summary: Valider le Bon de Commande Fournisseur (DRAFT -> ORDERED) (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2bOrderIdParam'
+      responses:
+        '200':
+          description: Statut ORDERED activé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2bPurchaseOrderResponse'
+
+  /api/v1/clients/{clientId}/b2b-orders/{b2bOrderId}/receive-stock:
+    post:
+      operationId: receiveB2bPurchaseOrderStock
+      summary: Réceptionner la livraison fournisseur (ORDERED -> RECEIVED) et créditer le stock client (ROLE_ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/ClientIdParam'
+        - $ref: '#/components/parameters/B2bOrderIdParam'
+      responses:
+        '200':
+          description: Stock crédité et statut RECEIVED activé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/B2bPurchaseOrderResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ClientIdParam:
+      name: clientId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    B2cOrderIdParam:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    B2cLineIdParam:
+      name: lineId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    B2bOrderIdParam:
+      name: b2bOrderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Gender:
+      type: string
+      enum: [MEN, WOMEN, UNISEX, KIDS]
+    Size:
+      type: string
+      enum: [XS, S, M, L, XL, XXL, XXXL, AGE_2, AGE_4, AGE_6, AGE_8, AGE_10, AGE_12, AGE_14]
+    B2cOrderStatus:
+      type: string
+      enum: [IN_PROGRESS, IN_PRODUCTION, IN_DELIVERY, DELIVERED]
+    B2cOrderLineStatus:
+      type: string
+      enum: [PENDING_PICKUP, DELIVERED]
+    B2bOrderStatus:
+      type: string
+      enum: [DRAFT, ORDERED, RECEIVED]
+    ErrorCode:
+      type: string
+      enum:
+        - CASH_CONFIRMATION_REQUIRED
+        - INVALID_GENDER_SIZE
+        - ORDER_IMMUTABLE
+        - INSUFFICIENT_CLIENT_STOCK
+        - B2B_STOCK_NOT_RECEIVED
+        - MOQ_NOT_REACHED
+        - INSUFFICIENT_PRIVILEGES
+        - VALIDATION_ERROR
+        - RESOURCE_NOT_FOUND
+
+    CreateClientRequest:
+      type: object
+      required: [name, address, moq]
+      properties:
+        name: { type: string }
+        address: { type: string }
+        logoStorageKey: { type: [string, 'null'] }
+        moq: { type: integer, minimum: 1 }
+
+    UpdateMoqRequest:
+      type: object
+      required: [moq]
+      properties:
+        moq: { type: integer, minimum: 1 }
+
+    ClientResponse:
+      type: object
+      required: [id, name, address, moq, active, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        address: { type: string }
+        logoStorageKey: { type: [string, 'null'] }
+        moq: { type: integer }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateCatalogItemRequest:
+      type: object
+      required: [referenceCode, name, garmentStyle, colorReference, frontVisualStorageKey, b2cUnitPrice, b2bUnitCost]
+      properties:
+        referenceCode: { type: string }
+        name: { type: string }
+        garmentStyle: { type: string }
+        colorReference: { type: string }
+        frontVisualStorageKey: { type: string }
+        backVisualStorageKey: { type: [string, 'null'] }
+        visualPlacementNotes: { type: [string, 'null'] }
+        b2cUnitPrice: { type: number, format: decimal, minimum: 0.00 }
+        b2bUnitCost: { type: number, format: decimal, minimum: 0.00 }
+
+    B2cCatalogItemResponse:
+      type: object
+      required: [id, clientId, referenceCode, name, garmentStyle, colorReference, frontVisualStorageKey, b2cUnitPrice]
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        referenceCode: { type: string }
+        name: { type: string }
+        garmentStyle: { type: string }
+        colorReference: { type: string }
+        frontVisualStorageKey: { type: string }
+        backVisualStorageKey: { type: [string, 'null'] }
+        visualPlacementNotes: { type: [string, 'null'] }
+        b2cUnitPrice: { type: number, format: decimal }
+
+    AdminCatalogItemResponse:
+      allOf:
+        - $ref: '#/components/schemas/B2cCatalogItemResponse'
+        - type: object
+          required: [b2bUnitCost]
+          properties:
+            b2bUnitCost: { type: number, format: decimal }
+
+    ClientStockResponse:
+      type: object
+      required: [id, clientId, catalogItemId, gender, size, availableQuantity]
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        catalogItemId: { type: string, format: uuid }
+        gender: { $ref: '#/components/schemas/Gender' }
+        size: { $ref: '#/components/schemas/Size' }
+        availableQuantity: { type: integer, minimum: 0 }
+
+    AddB2cOrderLineRequest:
+      type: object
+      required: [catalogItemId, buyerFullName, buyerPhone, buyerEmail, gender, size, quantity, cashPaymentConfirmed, irreversibilityAcknowledged]
+      properties:
+        catalogItemId: { type: string, format: uuid }
+        buyerFullName: { type: string }
+        buyerPhone: { type: string }
+        buyerEmail: { type: string, format: email }
+        gender: { $ref: '#/components/schemas/Gender' }
+        size: { $ref: '#/components/schemas/Size' }
+        quantity: { type: integer, minimum: 1 }
+        cashPaymentConfirmed: { type: boolean }
+        irreversibilityAcknowledged: { type: boolean }
+
+    B2cOrderLineResponse:
+      type: object
+      required: [id, b2cOrderId, catalogItemId, receiptNumber, buyerFullName, buyerPhone, buyerEmail, gender, size, quantity, b2cUnitPrice, lineCashAmount, lineStatus, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        b2cOrderId: { type: string, format: uuid }
+        catalogItemId: { type: string, format: uuid }
+        receiptNumber: { type: string }
+        buyerFullName: { type: string }
+        buyerPhone: { type: string }
+        buyerEmail: { type: string }
+        gender: { $ref: '#/components/schemas/Gender' }
+        size: { $ref: '#/components/schemas/Size' }
+        quantity: { type: integer }
+        b2cUnitPrice: { type: number, format: decimal }
+        lineCashAmount: { type: number, format: decimal }
+        lineStatus: { $ref: '#/components/schemas/B2cOrderLineStatus' }
+        createdAt: { type: string, format: date-time }
+
+    B2cOrderSummaryResponse:
+      type: object
+      required: [id, clientId, orderNumber, status, clientMoqSnapshot, totalQuantity, moqReached, totalCashAmount, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        orderNumber: { type: string }
+        status: { $ref: '#/components/schemas/B2cOrderStatus' }
+        clientMoqSnapshot: { type: integer }
+        totalQuantity: { type: integer }
+        moqReached: { type: boolean }
+        totalCashAmount: { type: number, format: decimal }
+        createdAt: { type: string, format: date-time }
+
+    B2cOrderDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/B2cOrderSummaryResponse'
+        - type: object
+          required: [lines]
+          properties:
+            lines:
+              type: array
+              items:
+                $ref: '#/components/schemas/B2cOrderLineResponse'
+
+    UpdateB2bFinalQuantityRequest:
+      type: object
+      required: [finalQuantity]
+      properties:
+        finalQuantity: { type: integer, minimum: 0 }
+
+    B2bPurchaseOrderLineResponse:
+      type: object
+      required: [id, catalogItemId, gender, size, b2cDemandedQuantity, finalQuantity, b2bUnitCost, lineTotalCost, garmentStyleSnapshot, colorReferenceSnapshot, frontVisualStorageSnapshot]
+      properties:
+        id: { type: string, format: uuid }
+        catalogItemId: { type: string, format: uuid }
+        gender: { $ref: '#/components/schemas/Gender' }
+        size: { $ref: '#/components/schemas/Size' }
+        b2cDemandedQuantity: { type: integer }
+        finalQuantity: { type: integer }
+        b2bUnitCost: { type: number, format: decimal }
+        lineTotalCost: { type: number, format: decimal }
+        garmentStyleSnapshot: { type: string }
+        colorReferenceSnapshot: { type: string }
+        frontVisualStorageSnapshot: { type: string }
+        backVisualStorageSnapshot: { type: [string, 'null'] }
+
+    B2bPurchaseOrderResponse:
+      type: object
+      required: [id, clientId, b2cOrderId, poNumber, status, totalB2bCost, lines, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        clientId: { type: string, format: uuid }
+        b2cOrderId: { type: string, format: uuid }
+        poNumber: { type: string }
+        status: { $ref: '#/components/schemas/B2bOrderStatus' }
+        totalB2bCost: { type: number, format: decimal }
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/B2bPurchaseOrderLineResponse'
+        createdAt: { type: string, format: date-time }
+
+    ProblemDetails:
+      type: object
+      required: [type, title, status, detail, instance, errorCode, timestamp]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        errorCode: { $ref: '#/components/schemas/ErrorCode' }
+        timestamp: { type: string, format: date-time }
+
+  responses:
+    ForbiddenProblem:
+      description: Accès refusé (ROLE_ADMIN requis)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'

@@ -1,8 +1,36 @@
 export type Gender = 'MEN' | 'WOMEN' | 'UNISEX' | 'KIDS';
 
-export type AdultSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL';
-export type KidsSize = 'AGE_2' | 'AGE_4' | 'AGE_6' | 'AGE_8' | 'AGE_10' | 'AGE_12' | 'AGE_14';
-export type Size = AdultSize | KidsSize;
+export type AdultSize = 'XXS' | 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL' | 'XXXXL';
+export type KidsSize =
+  | 'AGE_2'
+  | 'AGE_4'
+  | 'AGE_6'
+  | 'AGE_8'
+  | 'AGE_10'
+  | 'AGE_12'
+  | 'AGE_14'
+  | 'AGE_16';
+export type NumericSize =
+  | '28'
+  | '30'
+  | '32'
+  | '34'
+  | '35'
+  | '36'
+  | '37'
+  | '38'
+  | '39'
+  | '40'
+  | '41'
+  | '42'
+  | '43'
+  | '44'
+  | '45'
+  | '46'
+  | '48'
+  | '50'
+  | '52';
+export type Size = AdultSize | KidsSize | NumericSize | 'TU' | string;
 
 export type ClientType = 'PRIMARY_SCHOOL' | 'SECONDARY_SCHOOL' | 'ORGANIZATION';
 
@@ -14,23 +42,355 @@ export type ProductType =
   | 'CARDIGAN'
   | 'TROUSERS_SKIRT'
   | 'BLOUSE'
-  | 'JACKET';
+  | 'JACKET'
+  | 'SHOES'
+  | 'ACCESSORY'
+  | string;
 
-export const ALL_PRODUCT_TYPES: readonly { readonly code: ProductType; readonly label: string }[] = [
-  { code: 'POLO', label: 'Polo' },
-  { code: 'SHIRT', label: 'Chemise' },
-  { code: 'TRACKSUIT', label: 'Combinaison sport' },
-  { code: 'SWEATSHIRT', label: 'Sweat à capuche' },
-  { code: 'CARDIGAN', label: 'Pull / Cardigan' },
-  { code: 'TROUSERS_SKIRT', label: 'Pantalon / Jupe' },
-  { code: 'BLOUSE', label: 'Blouse / Tablier' },
-  { code: 'JACKET', label: 'Veste / Blazer' },
+export type SizeSystemFormat = 'ALPHA' | 'NUMERIC' | 'AGE' | 'ONE_SIZE' | 'CUSTOM';
+export type SizeTargetAudience = 'ADULT' | 'KIDS' | 'UNIVERSAL';
+export type ProductSilhouette = 'TOP_SHORT' | 'TOP_LONG' | 'BOTTOM' | 'SHOES' | 'ACCESSORY';
+
+export interface SizeGridConfig {
+  readonly id: string;
+  readonly name: string;
+  readonly format: SizeSystemFormat;
+  readonly audience: SizeTargetAudience;
+  readonly description: string;
+  readonly sizes: readonly string[];
+  readonly isSystem?: boolean;
+}
+
+export interface ProductTypeConfig {
+  readonly code: string;
+  readonly label: string;
+  readonly silhouette: ProductSilhouette;
+  readonly sizeGridIds: readonly string[];
+  readonly defaultSizes: readonly string[];
+  readonly isSystem?: boolean;
+}
+
+export interface CatalogConfiguration {
+  readonly sizeGrids: readonly SizeGridConfig[];
+  readonly productTypes: readonly ProductTypeConfig[];
+}
+
+export const DEFAULT_SIZE_GRIDS: readonly SizeGridConfig[] = [
+  {
+    id: 'ALPHA_ADULT',
+    name: 'Tailles Lettres Standard (XS à 3XL)',
+    format: 'ALPHA',
+    audience: 'ADULT',
+    description: 'Grille internationale en lettres pour hauts, polos, sweats, pulls et vestes adultes/lycée.',
+    sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+    isSystem: true,
+  },
+  {
+    id: 'KIDS_AGE',
+    name: 'Tailles Enfant par Âge (2 à 14 ans)',
+    format: 'AGE',
+    audience: 'KIDS',
+    description: 'Grille scolaire enfance & primaire exprimée par tranche d’âge (2 ans à 14 ans).',
+    sizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14'],
+    isSystem: true,
+  },
+  {
+    id: 'NUMERIC_CONTINUOUS',
+    name: 'Tailles en Nombres Continus (36, 37, 38, 39, 40...)',
+    format: 'NUMERIC',
+    audience: 'UNIVERSAL',
+    description: 'Pointures chaussures/baskets, tours de cou chemises ou tailles numériques continues.',
+    sizes: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+    isSystem: true,
+  },
+  {
+    id: 'NUMERIC_TAILOR',
+    name: 'Tailles Numériques Confection / Pantalons (34, 36, 38, 40...)',
+    format: 'NUMERIC',
+    audience: 'UNIVERSAL',
+    description: 'Tailles françaises par pas de 2 (34 à 48) pour pantalons, jupes, bermudas et tailleurs.',
+    sizes: ['34', '36', '38', '40', '42', '44', '46', '48'],
+    isSystem: true,
+  },
+  {
+    id: 'ONE_SIZE',
+    name: 'Taille Unique (TU)',
+    format: 'ONE_SIZE',
+    audience: 'UNIVERSAL',
+    description: 'Pour les accessoires sans déclinaison de pointure (cravate, foulard, casquette, sac).',
+    sizes: ['TU'],
+    isSystem: true,
+  },
 ];
+
+export const DEFAULT_PRODUCT_TYPE_CONFIGS: readonly ProductTypeConfig[] = [
+  {
+    code: 'POLO',
+    label: 'Polo',
+    silhouette: 'TOP_SHORT',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_2',
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+      'XXXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'SHIRT',
+    label: 'Chemise',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT', 'NUMERIC_CONTINUOUS'],
+    defaultSizes: [
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'TROUSERS_SKIRT',
+    label: 'Pantalon / Jupe',
+    silhouette: 'BOTTOM',
+    sizeGridIds: ['KIDS_AGE', 'NUMERIC_TAILOR', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      '34',
+      '36',
+      '38',
+      '40',
+      '42',
+      '44',
+      '46',
+      '48',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'TRACKSUIT',
+    label: 'Combinaison sport',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_2',
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'SWEATSHIRT',
+    label: 'Sweat à capuche',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+      'XXXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'CARDIGAN',
+    label: 'Pull / Cardigan',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_2',
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'BLOUSE',
+    label: 'Blouse / Tablier',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+    defaultSizes: [
+      'AGE_2',
+      'AGE_4',
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'JACKET',
+    label: 'Veste / Blazer',
+    silhouette: 'TOP_LONG',
+    sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT', 'NUMERIC_TAILOR'],
+    defaultSizes: [
+      'AGE_6',
+      'AGE_8',
+      'AGE_10',
+      'AGE_12',
+      'AGE_14',
+      'XS',
+      'S',
+      'M',
+      'L',
+      'XL',
+      'XXL',
+    ],
+    isSystem: true,
+  },
+  {
+    code: 'SHOES',
+    label: 'Chaussures / Baskets',
+    silhouette: 'SHOES',
+    sizeGridIds: ['NUMERIC_CONTINUOUS'],
+    defaultSizes: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+    isSystem: true,
+  },
+  {
+    code: 'ACCESSORY',
+    label: 'Accessoire / Cravate / Casquette',
+    silhouette: 'ACCESSORY',
+    sizeGridIds: ['ONE_SIZE'],
+    defaultSizes: ['TU'],
+    isSystem: true,
+  },
+];
+
+export const DEFAULT_CATALOG_CONFIGURATION: CatalogConfiguration = {
+  sizeGrids: DEFAULT_SIZE_GRIDS,
+  productTypes: DEFAULT_PRODUCT_TYPE_CONFIGS,
+};
+
+export const ALL_PRODUCT_TYPES: readonly { readonly code: ProductType; readonly label: string }[] =
+  DEFAULT_PRODUCT_TYPE_CONFIGS.map((pt) => ({ code: pt.code, label: pt.label }));
 
 export const ADULT_SIZES: readonly AdultSize[] = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 export const KIDS_SIZES: readonly KidsSize[] = ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14'];
+export const NUMERIC_CONTINUOUS_SIZES: readonly string[] = [
+  '36',
+  '37',
+  '38',
+  '39',
+  '40',
+  '41',
+  '42',
+  '43',
+  '44',
+  '45',
+];
+export const NUMERIC_TAILOR_SIZES: readonly string[] = ['34', '36', '38', '40', '42', '44', '46', '48'];
 export const ALL_GENDERS: readonly Gender[] = ['MEN', 'WOMEN', 'UNISEX', 'KIDS'];
 export const ALL_CLIENT_TYPES: readonly ClientType[] = ['PRIMARY_SCHOOL', 'SECONDARY_SCHOOL', 'ORGANIZATION'];
+
+export function isStrictAdultAlphaSize(size: string): boolean {
+  return ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL', '2XL', '3XL', '4XL', '5XL'].includes(
+    size.trim().toUpperCase()
+  );
+}
+
+export function isStrictKidsAgeSize(size: string): boolean {
+  const normalized = size.trim().toUpperCase();
+  return normalized.startsWith('AGE_') || /^\d+\s*ANS$/i.test(normalized);
+}
+
+export function formatSizeLabelFr(size: string | null | undefined, verbose = false): string {
+  if (!size) {
+    return '';
+  }
+  const raw = size.trim();
+  const upper = raw.toUpperCase();
+  if (upper.startsWith('AGE_')) {
+    const years = upper.replace('AGE_', '');
+    return `${years} ans`;
+  }
+  if (upper.startsWith('SIZE_')) {
+    return upper.replace('SIZE_', '');
+  }
+  if (upper === 'TU' || upper === 'ONE_SIZE') {
+    return verbose ? 'TU (Taille Unique)' : 'TU';
+  }
+  if (verbose) {
+    const verboseMap: Record<string, string> = {
+      XXS: 'XXS (Très Très Petit)',
+      XS: 'XS (Très Petit)',
+      S: 'S (Petit)',
+      M: 'M (Moyen)',
+      L: 'L (Grand)',
+      XL: 'XL (Très Grand)',
+      XXL: 'XXL (Double XL)',
+      XXXL: 'XXXL (Triple XL)',
+      XXXXL: '4XL (Quadruple XL)',
+    };
+    if (verboseMap[upper]) {
+      return verboseMap[upper];
+    }
+    if (/^\d+$/.test(raw)) {
+      return `Taille ${raw}`;
+    }
+  }
+  return raw;
+}
 
 export function getAllowedGendersForClientType(clientType?: ClientType | null): readonly Gender[] {
   if (clientType === 'PRIMARY_SCHOOL') {
@@ -55,14 +415,18 @@ export function getAllowedSizesForCatalogItem(
   if (!item?.availableSizes || !item.availableSizes.trim()) {
     return baseSizes;
   }
-  const configured = new Set(
-    item.availableSizes
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
+  const configuredList = item.availableSizes
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (configuredList.length === 0) {
+    return baseSizes;
+  }
+  const isKidsContext = clientType === 'PRIMARY_SCHOOL' || gender === 'KIDS';
+  const filtered = configuredList.filter((sz) =>
+    isKidsContext ? !isStrictAdultAlphaSize(sz) : !isStrictKidsAgeSize(sz)
   );
-  const filtered = baseSizes.filter((s) => configured.has(s));
-  return filtered.length > 0 ? filtered : baseSizes;
+  return filtered.length > 0 ? filtered : configuredList;
 }
 
 export type UserRole = 'ROLE_USER' | 'ROLE_ADMIN';

@@ -10,6 +10,7 @@ import {
   B2cOrderDetailResponse,
   B2cOrderLineResponse,
   B2cOrderSummaryResponse,
+  CatalogConfiguration,
   ClientResponse,
   ClientSectionInput,
   ClientStockResponse,
@@ -94,6 +95,14 @@ export class UniformApiService {
 
   listClients(): Observable<ClientResponse[]> {
     return this.http.get<ClientResponse[]>('/api/v1/clients');
+  }
+
+  getCatalogConfiguration(): Observable<CatalogConfiguration> {
+    return this.http.get<CatalogConfiguration>('/api/v1/catalog-config');
+  }
+
+  updateCatalogConfiguration(config: CatalogConfiguration): Observable<CatalogConfiguration> {
+    return this.http.put<CatalogConfiguration>('/api/v1/admin/catalog-config', config);
   }
 
   createClient(payload: {

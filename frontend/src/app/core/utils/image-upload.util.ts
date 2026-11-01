@@ -54,22 +54,37 @@ export function resolveGarmentPalette(colorRef?: string | null): GarmentPalette 
 
 export function getGarmentSvgDataUrl(
   productType?: string | null,
-  colorRef?: string | null
+  colorRef?: string | null,
+  silhouetteHint?: string | null
 ): string {
   const palette = resolveGarmentPalette(colorRef);
-  const type = (productType ?? 'POLO').trim().toUpperCase();
+  const type = (silhouetteHint || productType || 'POLO').trim().toUpperCase();
 
   let bodyPath = '';
   let detailMarkup = '';
 
-  if (type === 'TROUSERS_SKIRT') {
+  if (type === 'TROUSERS_SKIRT' || type === 'BOTTOM' || type.includes('PANTALON') || type.includes('JUPE')) {
     bodyPath = 'M 38 20 L 82 20 L 90 102 L 66 102 L 60 54 L 54 102 L 30 102 Z';
     detailMarkup = `<line x1="38" y1="28" x2="82" y2="28" stroke="${palette.collar}" stroke-width="2" opacity="0.7"/>`;
+  } else if (type === 'SHOES' || type.includes('CHAUSSURE') || type.includes('BASKET')) {
+    bodyPath = 'M 22 76 L 34 42 L 56 42 L 66 62 L 98 68 Q 104 72 102 86 L 20 86 Z';
+    detailMarkup = `
+      <line x1="20" y1="82" x2="102" y2="82" stroke="${palette.collar}" stroke-width="3.5"/>
+      <line x1="52" y1="48" x2="62" y2="56" stroke="${palette.collar}" stroke-width="2"/>
+    `;
+  } else if (type === 'ACCESSORY' || type.includes('CRAVATE') || type.includes('ACCESSOIRE')) {
+    bodyPath = 'M 48 20 L 72 20 L 66 34 L 74 86 L 60 102 L 46 86 L 54 34 Z';
+    detailMarkup = `
+      <line x1="50" y1="54" x2="70" y2="62" stroke="${palette.collar}" stroke-width="2.5" opacity="0.85"/>
+      <line x1="48" y1="70" x2="72" y2="78" stroke="${palette.collar}" stroke-width="2.5" opacity="0.85"/>
+    `;
   } else if (
     type === 'SWEATSHIRT' ||
     type === 'CARDIGAN' ||
     type === 'JACKET' ||
-    type === 'TRACKSUIT'
+    type === 'TRACKSUIT' ||
+    type === 'BLOUSE' ||
+    type === 'TOP_LONG'
   ) {
     bodyPath =
       'M 42 22 L 78 22 L 104 46 L 94 88 L 80 84 L 80 48 L 80 100 L 40 100 L 40 48 L 40 84 L 26 88 L 16 46 Z';

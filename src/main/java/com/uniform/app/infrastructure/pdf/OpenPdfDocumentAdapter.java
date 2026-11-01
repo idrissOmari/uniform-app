@@ -849,16 +849,20 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
     }
 
     private static String translateSizeFr(String size) {
-        return switch (size) {
-            case "AGE_2" -> "2 ans";
-            case "AGE_4" -> "4 ans";
-            case "AGE_6" -> "6 ans";
-            case "AGE_8" -> "8 ans";
-            case "AGE_10" -> "10 ans";
-            case "AGE_12" -> "12 ans";
-            case "AGE_14" -> "14 ans";
-            default -> size;
-        };
+        if (size == null) {
+            return "";
+        }
+        String normalized = size.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("AGE_")) {
+            return normalized.substring(4) + " ans";
+        }
+        if (normalized.startsWith("SIZE_")) {
+            return normalized.substring(5);
+        }
+        if (normalized.equals("TU")) {
+            return "Taille Unique";
+        }
+        return size;
     }
 
     private static String translateProductTypeFr(String productType) {
@@ -874,6 +878,8 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
             case "TROUSERS_SKIRT" -> "Pantalon / Jupe";
             case "BLOUSE" -> "Blouse / Tablier";
             case "JACKET" -> "Veste / Blazer";
+            case "SHOES" -> "Chaussures / Baskets";
+            case "ACCESSORY" -> "Accessoire";
             default -> productType;
         };
     }

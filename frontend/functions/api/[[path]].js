@@ -12,9 +12,155 @@
  * - Persistance automatique dans Cloudflare D1 (base SQLite cloud 'uniform-app-db')
  */
 
-const ADULT_SIZES = new Set(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']);
-const KIDS_SIZES = new Set(['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14']);
+const STRICT_ADULT_ALPHA_SIZES = new Set([
+  'XXS',
+  'XS',
+  'S',
+  'M',
+  'L',
+  'XL',
+  'XXL',
+  'XXXL',
+  'XXXXL',
+  '2XL',
+  '3XL',
+  '4XL',
+  '5XL',
+]);
 const ADULT_GENDERS = new Set(['MEN', 'WOMEN', 'UNISEX']);
+const ALL_VALID_GENDERS = new Set(['MEN', 'WOMEN', 'UNISEX', 'KIDS']);
+
+const DEFAULT_CATALOG_CONFIG = {
+  sizeGrids: [
+    {
+      id: 'ALPHA_ADULT',
+      name: 'Tailles Lettres Standard (XS à 3XL)',
+      format: 'ALPHA',
+      audience: 'ADULT',
+      description: 'Grille internationale en lettres pour hauts, polos, sweats, pulls et vestes adultes/lycée.',
+      sizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+      isSystem: true,
+    },
+    {
+      id: 'KIDS_AGE',
+      name: 'Tailles Enfant par Âge (2 à 14 ans)',
+      format: 'AGE',
+      audience: 'KIDS',
+      description: 'Grille scolaire enfance & primaire exprimée par tranche d’âge (2 ans à 14 ans).',
+      sizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14'],
+      isSystem: true,
+    },
+    {
+      id: 'NUMERIC_CONTINUOUS',
+      name: 'Tailles en Nombres Continus (36, 37, 38, 39, 40...)',
+      format: 'NUMERIC',
+      audience: 'UNIVERSAL',
+      description: 'Pointures chaussures/baskets, tours de cou chemises ou tailles numériques continues.',
+      sizes: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+      isSystem: true,
+    },
+    {
+      id: 'NUMERIC_TAILOR',
+      name: 'Tailles Numériques Confection / Pantalons (34, 36, 38, 40...)',
+      format: 'NUMERIC',
+      audience: 'UNIVERSAL',
+      description: 'Tailles françaises par pas de 2 (34 à 48) pour pantalons, jupes, bermudas et tailleurs.',
+      sizes: ['34', '36', '38', '40', '42', '44', '46', '48'],
+      isSystem: true,
+    },
+    {
+      id: 'ONE_SIZE',
+      name: 'Taille Unique (TU)',
+      format: 'ONE_SIZE',
+      audience: 'UNIVERSAL',
+      description: 'Pour les accessoires sans déclinaison de pointure (cravate, foulard, casquette, sac).',
+      sizes: ['TU'],
+      isSystem: true,
+    },
+  ],
+  productTypes: [
+    {
+      code: 'POLO',
+      label: 'Polo',
+      silhouette: 'TOP_SHORT',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+      isSystem: true,
+    },
+    {
+      code: 'SHIRT',
+      label: 'Chemise',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT', 'NUMERIC_CONTINUOUS'],
+      defaultSizes: ['AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      isSystem: true,
+    },
+    {
+      code: 'TROUSERS_SKIRT',
+      label: 'Pantalon / Jupe',
+      silhouette: 'BOTTOM',
+      sizeGridIds: ['KIDS_AGE', 'NUMERIC_TAILOR', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', '34', '36', '38', '40', '42', '44', '46', '48'],
+      isSystem: true,
+    },
+    {
+      code: 'TRACKSUIT',
+      label: 'Combinaison sport',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      isSystem: true,
+    },
+    {
+      code: 'SWEATSHIRT',
+      label: 'Sweat à capuche',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+      isSystem: true,
+    },
+    {
+      code: 'CARDIGAN',
+      label: 'Pull / Cardigan',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      isSystem: true,
+    },
+    {
+      code: 'BLOUSE',
+      label: 'Blouse / Tablier',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT'],
+      defaultSizes: ['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      isSystem: true,
+    },
+    {
+      code: 'JACKET',
+      label: 'Veste / Blazer',
+      silhouette: 'TOP_LONG',
+      sizeGridIds: ['KIDS_AGE', 'ALPHA_ADULT', 'NUMERIC_TAILOR'],
+      defaultSizes: ['AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+      isSystem: true,
+    },
+    {
+      code: 'SHOES',
+      label: 'Chaussures / Baskets',
+      silhouette: 'SHOES',
+      sizeGridIds: ['NUMERIC_CONTINUOUS'],
+      defaultSizes: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+      isSystem: true,
+    },
+    {
+      code: 'ACCESSORY',
+      label: 'Accessoire / Cravate / Casquette',
+      silhouette: 'ACCESSORY',
+      sizeGridIds: ['ONE_SIZE'],
+      defaultSizes: ['TU'],
+      isSystem: true,
+    },
+  ],
+};
 
 let memoryStateCache = null;
 
@@ -214,6 +360,7 @@ function createInitialState() {
     ],
     b2cOrders: [],
     b2bOrders: [],
+    catalogConfig: DEFAULT_CATALOG_CONFIG,
     seq: 100,
   };
 }
@@ -416,13 +563,22 @@ function assertAdmin(actor, instance, origin) {
 }
 
 function isValidGenderSize(gender, size) {
-  if (ADULT_GENDERS.has(gender) && ADULT_SIZES.has(size)) {
-    return true;
+  if (!ALL_VALID_GENDERS.has(gender) || !size) {
+    return false;
   }
-  if (gender === 'KIDS' && KIDS_SIZES.has(size)) {
-    return true;
+  const normalized = String(size).trim().toUpperCase();
+  if (!normalized) {
+    return false;
   }
-  return false;
+  const isStrictKidsAge = normalized.startsWith('AGE_') || /^\d+\s*ANS$/i.test(normalized);
+  const isStrictAdultAlpha = STRICT_ADULT_ALPHA_SIZES.has(normalized);
+  if (gender === 'KIDS') {
+    return !isStrictAdultAlpha;
+  }
+  if (ADULT_GENDERS.has(gender)) {
+    return !isStrictKidsAge;
+  }
+  return true;
 }
 
 function toUserAccountResponse(user, state) {
@@ -910,6 +1066,32 @@ export async function onRequest(context) {
       }
     }
     return jsonResponse(result, 200, origin);
+  }
+
+  // =========================================================================
+  // 4.5. CONFIGURATION E-COMMERCE : TYPES DE PRODUITS & GRILLES DE TAILLES
+  // =========================================================================
+  if (path === '/api/v1/catalog-config' && method === 'GET') {
+    return jsonResponse(state.catalogConfig || DEFAULT_CATALOG_CONFIG, 200, origin);
+  }
+
+  if (path === '/api/v1/admin/catalog-config' && method === 'PUT') {
+    const forbidden = assertAdmin(actor, path, origin);
+    if (forbidden) return forbidden;
+    if (
+      body &&
+      Array.isArray(body.sizeGrids) &&
+      body.sizeGrids.length > 0 &&
+      Array.isArray(body.productTypes) &&
+      body.productTypes.length > 0
+    ) {
+      state.catalogConfig = {
+        sizeGrids: body.sizeGrids,
+        productTypes: body.productTypes,
+      };
+      await saveState(env, state);
+    }
+    return jsonResponse(state.catalogConfig || DEFAULT_CATALOG_CONFIG, 200, origin);
   }
 
   // =========================================================================

@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute } from '@angular/router';
 import { TranslatePipe } from '../../core/i18n/i18n.service';
 import {
-  ALL_PRODUCT_TYPES,
   GlobalStockItemResponse,
 } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
@@ -96,7 +95,7 @@ import {
                     (change)="onFilterProductTypeChange($any($event.target).value)"
                   >
                     <option value="">Tous les types</option>
-                    @for (pt of productTypes; track pt.code) {
+                    @for (pt of workflowStore.productTypes(); track pt.code) {
                       <option [value]="pt.code">{{ pt.label }}</option>
                     }
                   </select>
@@ -331,7 +330,6 @@ import {
 export class AdminGlobalStockComponent {
   readonly workflowStore = inject(UniformWorkflowStore);
   private readonly route = inject(ActivatedRoute);
-  readonly productTypes = ALL_PRODUCT_TYPES;
 
   // Header filters
   readonly filterClientId = signal<string>('');
@@ -496,11 +494,7 @@ export class AdminGlobalStockComponent {
   }
 
   resolveProductTypeLabel(productType?: string | null): string {
-    if (!productType) {
-      return 'Polo';
-    }
-    const found = ALL_PRODUCT_TYPES.find((p) => p.code === productType.toUpperCase());
-    return found ? found.label : productType;
+    return this.workflowStore.resolveProductTypeLabel(productType);
   }
 
   getStockRowActions(row: GlobalStockItemResponse): readonly TableActionItem[] {

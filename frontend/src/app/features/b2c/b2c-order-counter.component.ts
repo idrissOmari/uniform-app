@@ -1345,10 +1345,17 @@ export class B2cOrderCounterComponent {
 
   // Modale d'ajustement de stock (Admin)
   readonly showStockAdjustModal = signal<boolean>(false);
+  readonly adjustCatalogItemId = signal<string>('');
   readonly adjustGender = signal<Gender>('KIDS');
-  readonly adjustAllowedSizes = computed<readonly Size[]>(() =>
-    getAllowedSizesForGender(this.adjustGender(), this.workflowStore.selectedClient()?.clientType)
-  );
+  readonly adjustAllowedSizes = computed<readonly Size[]>(() => {
+    const itemId = this.adjustCatalogItemId();
+    const item = this.workflowStore.catalogItems().find((i) => i.id === itemId);
+    return getAllowedSizesForCatalogItem(
+      item,
+      this.adjustGender(),
+      this.workflowStore.selectedClient()?.clientType
+    );
+  });
   readonly adjustSize = linkedSignal<readonly Size[], Size>({
     source: this.adjustAllowedSizes,
     computation: (sizes) => sizes[0] ?? 'AGE_10',
@@ -1634,11 +1641,19 @@ export class B2cOrderCounterComponent {
   }
 
   openStockAdjustModal(): void {
-    const defaultItemId = this.workflowStore.catalogItems()[0]?.id ?? '';
+    const defaultItem = this.workflowStore.catalogItems()[0];
+    const defaultItemId = defaultItem?.id ?? '';
+    this.adjustCatalogItemId.set(defaultItemId);
     this.adjustGender.set('KIDS');
-    this.adjustSize.set('AGE_10');
+    const allowed = getAllowedSizesForCatalogItem(
+      defaultItem,
+      'KIDS',
+      this.workflowStore.selectedClient()?.clientType
+    );
+    const defaultSize = allowed[0] ?? 'AGE_10';
+    this.adjustSize.set(defaultSize);
     const currentStock = defaultItemId
-      ? this.workflowStore.getAvailableStock(defaultItemId, 'KIDS', 'AGE_10')
+      ? this.workflowStore.getAvailableStock(defaultItemId, 'KIDS', defaultSize)
       : 20;
     this.stockAdjustForm.reset({
       catalogItemId: defaultItemId,
@@ -1649,10 +1664,9 @@ export class B2cOrderCounterComponent {
 
   openStockAdjustModalForRow(row: StockVariantSummaryRow): void {
     const effectiveGender: Gender = this.isPrimarySchoolClient() ? 'KIDS' : row.gender;
-    const effectiveSize: Size =
-      this.isPrimarySchoolClient() && !row.size.startsWith('AGE_') ? 'AGE_10' : row.size;
+    this.adjustCatalogItemId.set(row.catalogItemId);
     this.adjustGender.set(effectiveGender);
-    this.adjustSize.set(effectiveSize);
+    this.adjustSize.set(row.size);
     this.stockAdjustForm.reset({
       catalogItemId: row.catalogItemId,
       availableQuantity: row.availableQuantity,
@@ -1686,11 +1700,16 @@ export class B2cOrderCounterComponent {
   onAdjustGenderChange(gender: Gender): void {
     const effectiveGender: Gender = this.isPrimarySchoolClient() ? 'KIDS' : gender;
     this.adjustGender.set(effectiveGender);
-    const firstAllowedSize =
-      getAllowedSizesForGender(effectiveGender, this.workflowStore.selectedClient()?.clientType)[0] ??
-      'AGE_10';
-    this.adjustSize.set(firstAllowedSize);
     const itemId = this.stockAdjustForm.controls.catalogItemId.value;
+    this.adjustCatalogItemId.set(itemId);
+    const item = this.workflowStore.catalogItems().find((i) => i.id === itemId);
+    const firstAllowedSize =
+      getAllowedSizesForCatalogItem(
+        item,
+        effectiveGender,
+        this.workflowStore.selectedClient()?.clientType
+      )[0] ?? 'AGE_10';
+    this.adjustSize.set(firstAllowedSize);
     if (itemId) {
       this.stockAdjustForm.controls.availableQuantity.setValue(
         this.workflowStore.getAvailableStock(itemId, effectiveGender, firstAllowedSize)
@@ -1726,19 +1745,23 @@ export class B2cOrderCounterComponent {
   }
 
   getItemSelection(catalogItemId: string): ProductOrderSelection {
+    const item = this.workflowStore.catalogItems().find((i) => i.id === catalogItemId);
+    const clientType = this.workflowStore.selectedClient()?.clientType;
     const existing = this.itemSelections()[catalogItemId];
     if (existing) {
       if (this.isPrimarySchoolClient() && existing.gender !== 'KIDS') {
+        const allowedForKids = getAllowedSizesForCatalogItem(item, 'KIDS', clientType);
         return {
           ...existing,
           gender: 'KIDS',
-          size: existing.size.startsWith('AGE_') ? existing.size : 'AGE_10',
+          size: allowedForKids.includes(existing.size) ? existing.size : (allowedForKids[0] ?? 'AGE_10'),
         };
       }
       return existing;
     }
-    const defaultGender: Gender = this.isPrimarySchoolClient() ? 'KIDS' : 'KIDS';
-    const defaultSize: Size = 'AGE_10';
+    const defaultGender: Gender = 'KIDS';
+    const allowed = getAllowedSizesForCatalogItem(item, defaultGender, clientType);
+    const defaultSize: Size = allowed[0] ?? 'AGE_10';
     return {
       checked: false,
       gender: defaultGender,
@@ -1775,7 +1798,9 @@ export class B2cOrderCounterComponent {
 
   updateItemGender(catalogItemId: string, gender: Gender): void {
     const effectiveGender: Gender = this.isPrimarySchoolClient() ? 'KIDS' : gender;
-    const allowed = getAllowedSizesForGender(
+    const item = this.workflowStore.catalogItems().find((i) => i.id === catalogItemId);
+    const allowed = getAllowedSizesForCatalogItem(
+      item,
       effectiveGender,
       this.workflowStore.selectedClient()?.clientType
     );
@@ -1820,10 +1845,12 @@ export class B2cOrderCounterComponent {
 
   openNewCashSaleModal(): void {
     const items = this.workflowStore.catalogItems();
+    const clientType = this.workflowStore.selectedClient()?.clientType;
     const initialMap: Record<string, ProductOrderSelection> = {};
     const defaultGender: Gender = 'KIDS';
-    const defaultSize: Size = 'AGE_10';
     items.forEach((item, index) => {
+      const allowed = getAllowedSizesForCatalogItem(item, defaultGender, clientType);
+      const defaultSize: Size = allowed[0] ?? 'AGE_10';
       initialMap[item.id] = {
         checked: index === 0,
         gender: defaultGender,

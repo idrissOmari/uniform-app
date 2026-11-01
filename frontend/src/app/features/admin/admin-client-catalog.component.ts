@@ -14,17 +14,24 @@ import {
   ADULT_SIZES,
   ALL_CLIENT_TYPES,
   ALL_GENDERS,
-  ALL_PRODUCT_TYPES,
   AdminCatalogItemResponse,
   ClientResponse,
   ClientSectionInput,
   ClientType,
   Gender,
   KIDS_SIZES,
+  ProductSilhouette,
   ProductType,
+  ProductTypeConfig,
   Size,
+  SizeGridConfig,
+  SizeSystemFormat,
+  SizeTargetAudience,
+  formatSizeLabelFr,
   getAllowedGendersForClientType,
   getAllowedSizesForGender,
+  isStrictAdultAlphaSize,
+  isStrictKidsAgeSize,
 } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
 import {
@@ -1155,6 +1162,13 @@ export class AdminClientsListComponent {
             <button
               type="button"
               class="rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-xs font-bold text-white backdrop-blur-xs transition hover:bg-white/25 cursor-pointer w-full sm:w-auto"
+              (click)="activeTab.set(activeTab() === 'ECOMMERCE_CONFIG' ? 'CATALOG' : 'ECOMMERCE_CONFIG')"
+            >
+              ⚙️ {{ activeTab() === 'ECOMMERCE_CONFIG' ? 'Retour au Catalogue' : 'Configurer Types & Tailles' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-xs font-bold text-white backdrop-blur-xs transition hover:bg-white/25 cursor-pointer w-full sm:w-auto"
               (click)="workflowStore.downloadCatalogFlyerPdf()"
             >
               🖨️ Imprimer Flyer Catalogue
@@ -1167,6 +1181,92 @@ export class AdminClientsListComponent {
               {{ 'adminCatalog.openCreateModalBtn' | t }}
             </button>
           </div>
+        </div>
+
+        <!-- Barre d'onglets : Catalogue Produits / Configuration E-Commerce (Types & Tailles) / Stock par Variante -->
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white p-2 shadow-2xs">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition cursor-pointer"
+              [class.bg-[#163672]]="activeTab() === 'CATALOG'"
+              [class.text-white]="activeTab() === 'CATALOG'"
+              [class.shadow-xs]="activeTab() === 'CATALOG'"
+              [class.text-slate-600]="activeTab() !== 'CATALOG'"
+              [class.hover:bg-slate-100]="activeTab() !== 'CATALOG'"
+              (click)="activeTab.set('CATALOG')"
+            >
+              <span>👕</span>
+              <span>Produits du Catalogue</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                [class.bg-white/20]="activeTab() === 'CATALOG'"
+                [class.text-white]="activeTab() === 'CATALOG'"
+                [class.bg-slate-100]="activeTab() !== 'CATALOG'"
+                [class.text-slate-700]="activeTab() !== 'CATALOG'"
+              >
+                {{ workflowStore.adminCatalogItems().length }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition cursor-pointer"
+              [class.bg-[#163672]]="activeTab() === 'ECOMMERCE_CONFIG'"
+              [class.text-white]="activeTab() === 'ECOMMERCE_CONFIG'"
+              [class.shadow-xs]="activeTab() === 'ECOMMERCE_CONFIG'"
+              [class.text-slate-600]="activeTab() !== 'ECOMMERCE_CONFIG'"
+              [class.hover:bg-slate-100]="activeTab() !== 'ECOMMERCE_CONFIG'"
+              (click)="activeTab.set('ECOMMERCE_CONFIG')"
+            >
+              <span>⚙️</span>
+              <span>Configuration Types de Produits & Grilles de Tailles</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                [class.bg-amber-400/30]="activeTab() === 'ECOMMERCE_CONFIG'"
+                [class.text-amber-100]="activeTab() === 'ECOMMERCE_CONFIG'"
+                [class.bg-amber-50]="activeTab() !== 'ECOMMERCE_CONFIG'"
+                [class.text-amber-800]="activeTab() !== 'ECOMMERCE_CONFIG'"
+              >
+                {{ workflowStore.productTypes().length }} types · {{ workflowStore.sizeGrids().length }} grilles
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition cursor-pointer"
+              [class.bg-[#163672]]="activeTab() === 'VARIANTS_STOCK'"
+              [class.text-white]="activeTab() === 'VARIANTS_STOCK'"
+              [class.shadow-xs]="activeTab() === 'VARIANTS_STOCK'"
+              [class.text-slate-600]="activeTab() !== 'VARIANTS_STOCK'"
+              [class.hover:bg-slate-100]="activeTab() !== 'VARIANTS_STOCK'"
+              (click)="activeTab.set('VARIANTS_STOCK')"
+            >
+              <span>📦</span>
+              <span>Stock dédié par Variante</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[10px] font-extrabold"
+                [class.bg-white/20]="activeTab() === 'VARIANTS_STOCK'"
+                [class.text-white]="activeTab() === 'VARIANTS_STOCK'"
+                [class.bg-slate-100]="activeTab() !== 'VARIANTS_STOCK'"
+                [class.text-slate-700]="activeTab() !== 'VARIANTS_STOCK'"
+              >
+                {{ workflowStore.stocks().length }}
+              </span>
+            </button>
+          </div>
+
+          @if (activeTab() === 'ECOMMERCE_CONFIG') {
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                (click)="resetConfigToDefaults()"
+              >
+                ↺ Réinitialiser valeurs par défaut
+              </button>
+            </div>
+          }
         </div>
 
         <!-- VUE ESSENTIELLE : Tableau des Produits disponibles à la vente pour cet Établissement -->
@@ -1327,6 +1427,234 @@ export class AdminClientsListComponent {
               [(pageSize)]="pageSize"
               [totalItems]="filteredCatalogItems().length"
             />
+          </div>
+        }
+
+        <!-- VUE E-COMMERCE PIM : Configuration des Types de Produits Commercialisés & Grilles de Tailles -->
+        @if (activeTab() === 'ECOMMERCE_CONFIG') {
+          <div class="space-y-6">
+            <!-- Encart explicatif E-Commerce / PIM -->
+            <div class="rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-[#eef2ff] via-[#f8fafc] to-[#ecfdf5] p-5 shadow-2xs">
+              <div class="flex flex-wrap items-start justify-between gap-4">
+                <div class="space-y-1.5 max-w-3xl">
+                  <div class="inline-flex items-center gap-2 rounded-full bg-[#163672] px-3 py-0.5 text-[11px] font-bold text-white">
+                    <span>Architecture E-Commerce & PIM</span>
+                    <span class="text-amber-300">·</span>
+                    <span>Standard Shopify / Akeneo / Saleor</span>
+                  </div>
+                  <h3 class="text-base font-extrabold text-slate-900">
+                    Paramétrage Dynamique des Types de Produits & Systèmes de Tailles
+                  </h3>
+                  <p class="text-xs text-slate-600 leading-relaxed">
+                    Configurez librement vos <strong>Grilles de Tailles</strong> (tailles en lettres <code class="rounded bg-white px-1.5 py-0.5 font-bold text-indigo-800">XS, S, M, L, XL...</code>, tailles en nombres continus <code class="rounded bg-white px-1.5 py-0.5 font-bold text-emerald-800">38, 39, 40, 41...</code>, tailles confection <code class="rounded bg-white px-1.5 py-0.5 font-bold text-amber-800">34, 36, 38, 40...</code>, âges enfant ou taille unique) et associez-les à chaque <strong>Type de Produit commercialisé</strong>.
+                  </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    class="rounded-xl border border-indigo-300 bg-white px-4 py-2.5 text-xs font-bold text-[#163672] shadow-2xs hover:bg-indigo-50 cursor-pointer"
+                    (click)="openCreateSizeGridModal()"
+                  >
+                    + Nouvelle Grille de Tailles (S/M/L ou 38/39/40...)
+                  </button>
+                  <button
+                    type="button"
+                    class="ui-btn-emerald"
+                    (click)="openCreateProductTypeModal()"
+                  >
+                    + Nouveau Type de Produit Commercialisé
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SECTION 1 : GRILLES & SYSTÈMES DE TAILLES POSSIBLES -->
+            <div class="ui-card p-5 sm:p-6 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3.5">
+                <div>
+                  <h4 class="text-sm font-extrabold uppercase tracking-wider text-[#163672]">
+                    1. Grilles & Systèmes de Tailles Possibles ({{ workflowStore.sizeGrids().length }})
+                  </h4>
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Définissez les référentiels de tailles en lettres (S, M, L...), en nombres (38, 39, 40... ou 34, 36, 38...), en âge (2-14 ans) ou sur-mesure.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="rounded-xl bg-[#163672] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0d2554] cursor-pointer"
+                  (click)="openCreateSizeGridModal()"
+                >
+                  + Créer une Grille de Tailles
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                @for (grid of workflowStore.sizeGrids(); track grid.id) {
+                  <div class="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-[#f8fafc] p-4 shadow-2xs transition hover:border-indigo-300">
+                    <div class="space-y-3">
+                      <div class="flex items-start justify-between gap-2">
+                        <div>
+                          <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-sm font-extrabold text-slate-900">{{ grid.name }}</span>
+                            <span
+                              class="rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase"
+                              [class.bg-indigo-100]="grid.format === 'ALPHA'"
+                              [class.text-indigo-800]="grid.format === 'ALPHA'"
+                              [class.bg-emerald-100]="grid.format === 'NUMERIC'"
+                              [class.text-emerald-800]="grid.format === 'NUMERIC'"
+                              [class.bg-amber-100]="grid.format === 'AGE'"
+                              [class.text-amber-800]="grid.format === 'AGE'"
+                              [class.bg-slate-200]="grid.format === 'ONE_SIZE' || grid.format === 'CUSTOM'"
+                              [class.text-slate-700]="grid.format === 'ONE_SIZE' || grid.format === 'CUSTOM'"
+                            >
+                              {{ formatSizeSystemBadge(grid.format) }}
+                            </span>
+                            <span class="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                              {{ formatAudienceBadge(grid.audience) }}
+                            </span>
+                          </div>
+                          @if (grid.description) {
+                            <p class="mt-1 text-xs text-slate-500">{{ grid.description }}</p>
+                          }
+                        </div>
+
+                        <div class="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            class="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                            (click)="openEditSizeGridModal(grid)"
+                          >
+                            ✏️ Modifier tailles
+                          </button>
+                          @if (workflowStore.sizeGrids().length > 1) {
+                            <button
+                              type="button"
+                              class="rounded-lg border border-rose-200 bg-white px-2 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                              title="Supprimer cette grille"
+                              (click)="workflowStore.deleteSizeGridConfig(grid.id)"
+                            >
+                              🗑️
+                            </button>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Aperçu des puces de tailles de la grille -->
+                      <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                        @for (sz of grid.sizes; track sz) {
+                          <span class="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-1 text-xs font-extrabold text-[#163672] shadow-2xs">
+                            {{ formatSizeLabelFr(sz) }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="mt-3 flex items-center justify-between border-t border-slate-200/60 pt-2.5 text-[11px] text-slate-400">
+                      <span>Code grille : <code class="font-mono text-slate-600">{{ grid.id }}</code></span>
+                      <span class="font-semibold text-slate-600">{{ grid.sizes.length }} taille(s) configurée(s)</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- SECTION 2 : TYPES DE PRODUITS COMMERCIALISÉS & TAILLES ASSOCIÉES -->
+            <div class="ui-card p-5 sm:p-6 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3.5">
+                <div>
+                  <h4 class="text-sm font-extrabold uppercase tracking-wider text-[#163672]">
+                    2. Types de Produits Commercialisés & Tailles Associées ({{ workflowStore.productTypes().length }})
+                  </h4>
+                  <p class="mt-0.5 text-xs text-slate-500">
+                    Gérez la liste des types de produits commercialisés et choisissez quelles grilles et tailles (S/M/L, 38/39/40, 2-14 ans...) sont associées à chaque type.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="ui-btn-emerald"
+                  (click)="openCreateProductTypeModal()"
+                >
+                  + Ajouter un Type de Produit
+                </button>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-slate-200 bg-[#f8fafc] text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th class="px-4 py-3 min-w-[220px]">Type de Produit Commercialisé</th>
+                      <th class="px-4 py-3 min-w-[220px]">Grille(s) de Tailles Associée(s)</th>
+                      <th class="px-4 py-3 min-w-[320px]">Tailles Associées par Défaut</th>
+                      <th class="px-4 py-3 text-right min-w-[160px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pt of workflowStore.productTypes(); track pt.code) {
+                      <tr class="border-b border-slate-200/80 hover:bg-slate-50/80">
+                        <td class="px-4 py-3.5">
+                          <div class="flex items-center gap-3">
+                            <img
+                              [src]="getGarmentSvgDataUrl(pt.code, 'Bleu Marine', pt.silhouette)"
+                              [alt]="pt.label"
+                              class="h-11 w-11 rounded-xl border border-slate-200 bg-white object-contain p-1 shadow-2xs shrink-0"
+                            />
+                            <div>
+                              <div class="text-sm font-extrabold text-slate-900">{{ pt.label }}</div>
+                              <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="font-mono text-[10px] text-slate-400">{{ pt.code }}</span>
+                                <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+                                  {{ formatSilhouetteLabel(pt.silhouette) }}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-4 py-3.5">
+                          <div class="flex flex-wrap gap-1.5">
+                            @for (gridId of pt.sizeGridIds; track gridId) {
+                              <span class="inline-flex items-center rounded-lg bg-indigo-50 border border-indigo-200/70 px-2.5 py-1 text-xs font-bold text-indigo-800">
+                                {{ resolveSizeGridName(gridId) }}
+                              </span>
+                            }
+                          </div>
+                        </td>
+                        <td class="px-4 py-3.5">
+                          <div class="flex flex-wrap gap-1">
+                            @for (sz of pt.defaultSizes; track sz) {
+                              <span class="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                                {{ formatSizeLabelFr(sz) }}
+                              </span>
+                            }
+                          </div>
+                        </td>
+                        <td class="px-4 py-3.5 text-right">
+                          <div class="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#163672] hover:bg-indigo-50 cursor-pointer"
+                              (click)="openEditProductTypeModal(pt)"
+                            >
+                              ✏️ Configurer tailles
+                            </button>
+                            @if (workflowStore.productTypes().length > 1) {
+                              <button
+                                type="button"
+                                class="rounded-xl border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                                title="Supprimer ce type de produit"
+                                (click)="workflowStore.deleteProductTypeConfig(pt.code)"
+                              >
+                                🗑️
+                              </button>
+                            }
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         }
 
@@ -1523,14 +1851,24 @@ export class AdminClientsListComponent {
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <label class="block text-xs font-semibold text-slate-700">
-                      Type de produit UniformApp <span class="font-bold text-rose-600">*</span>
-                    </label>
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs font-semibold text-slate-700">
+                        Type de produit commercialisé <span class="font-bold text-rose-600">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        class="text-[11px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                        (click)="closeCatalogModal(); activeTab.set('ECOMMERCE_CONFIG')"
+                      >
+                        ⚙️ Gérer les types & grilles
+                      </button>
+                    </div>
                     <select
                       formControlName="productType"
+                      (change)="onModalProductTypeChange($any($event.target).value)"
                       class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-[#163672]"
                     >
-                      @for (pt of productTypes; track pt.code) {
+                      @for (pt of workflowStore.productTypes(); track pt.code) {
                         <option [value]="pt.code">{{ pt.label }}</option>
                       }
                     </select>
@@ -1628,34 +1966,52 @@ export class AdminClientsListComponent {
                   }
                 </div>
 
-                <!-- TAILLES ASSOCIÉES AU PRODUIT -->
-                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2.5">
+                <!-- TAILLES ASSOCIÉES AU PRODUIT (DYNAMIQUE : S/M/L, 38/39/40, 34/36/38, 2-14 ANS, SUR-MESURE) -->
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-3">
                   <div class="flex flex-wrap items-center justify-between gap-2">
-                    <label class="block text-xs font-bold text-slate-800">
-                      Tailles associées à ce produit ({{ selectedProductSizes().length }} sélectionnée(s)) <span class="text-rose-600">*</span>
-                    </label>
-                    <div class="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        class="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-indigo-50 cursor-pointer"
-                        (click)="selectAllKidsSizes()"
-                      >
-                        Tailles Enfant (2-14 ans)
-                      </button>
-                      @if (activeClient.clientType !== 'PRIMARY_SCHOOL') {
-                        <button
-                          type="button"
-                          class="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-700 hover:bg-indigo-50 cursor-pointer"
-                          (click)="selectAllAdultSizes()"
-                        >
-                          + Tailles Adulte (XS-3XL)
-                        </button>
-                      }
+                    <div>
+                      <label class="block text-xs font-bold text-slate-800">
+                        Tailles associées à ce produit ({{ selectedProductSizes().length }} sélectionnée(s)) <span class="text-rose-600">*</span>
+                      </label>
+                      <p class="text-[11px] text-slate-500">
+                        Cliquez sur une grille (Lettres S/M/L, Nombres 38/39/40, Confection 34/36/38, Enfant) ou ajoutez vos tailles personnalisées.
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-800 hover:bg-indigo-100 cursor-pointer"
+                      (click)="applyDefaultSizesForCurrentProductType()"
+                    >
+                      ✓ Appliquer tailles par défaut du type « {{ resolveProductTypeLabel(catalogForm.controls.productType.value) }} »
+                    </button>
                   </div>
 
-                  <div class="flex flex-wrap gap-1.5">
-                    @for (sz of availableSizesForClient(); track sz) {
+                  <!-- Boutons de sélection rapide par Grille de Tailles configurée -->
+                  <div class="flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2.5">
+                    <span class="text-[11px] font-semibold text-slate-500">Grilles rapides :</span>
+                    @for (grid of workflowStore.sizeGrids(); track grid.id) {
+                      <button
+                        type="button"
+                        class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:border-indigo-400 hover:bg-indigo-50 cursor-pointer"
+                        (click)="applySizeGridToProduct(grid, false)"
+                        title="Remplacer par cette grille"
+                      >
+                        {{ grid.name }}
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg border border-emerald-300 bg-emerald-50/70 px-2 py-1 text-[11px] font-bold text-emerald-800 hover:bg-emerald-100 cursor-pointer"
+                        (click)="applySizeGridToProduct(grid, true)"
+                        title="Combiner / Ajouter les tailles de cette grille"
+                      >
+                        +
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Puces de tailles cliquables -->
+                  <div class="flex flex-wrap gap-1.5 pt-1">
+                    @for (sz of availableSizesForProductModal(); track sz) {
                       <button
                         type="button"
                         class="rounded-lg border px-2.5 py-1 text-xs font-bold transition cursor-pointer"
@@ -1667,9 +2023,28 @@ export class AdminClientsListComponent {
                         [class.text-slate-700]="!selectedProductSizes().includes(sz)"
                         (click)="toggleProductSize(sz)"
                       >
-                        {{ ('size.' + sz) | t }}
+                        {{ formatSizeLabelFr(sz) }}
                       </button>
                     }
+                  </div>
+
+                  <!-- Ajout rapide de taille(s) personnalisée(s) directement sur l'article -->
+                  <div class="flex flex-wrap items-center gap-2 border-t border-slate-200/70 pt-2.5">
+                    <input
+                      type="text"
+                      [value]="customSizeInputInProductModal()"
+                      (input)="customSizeInputInProductModal.set($any($event.target).value)"
+                      (keydown.enter)="$event.preventDefault(); addCustomSizesToProductModal()"
+                      placeholder="Ajouter des tailles (ex: 38, 39, 40, 41 ou XXS, 4XL)..."
+                      class="flex-1 min-w-[220px] rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white hover:bg-slate-900 cursor-pointer"
+                      (click)="addCustomSizesToProductModal()"
+                    >
+                      + Ajouter ces tailles
+                    </button>
                   </div>
                 </div>
 
@@ -1887,22 +2262,453 @@ export class AdminClientsListComponent {
           </div>
         </div>
       }
+
+      <!-- POPIN (Modale) Création / Modification d'une Grille de Tailles (S/M/L, 38/39/40, 2-14 ans...) -->
+      @if (showSizeGridModal()) {
+        <div class="ui-modal-backdrop">
+          <div class="ui-modal-panel max-w-2xl">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">
+                  {{ editingSizeGridId() ? 'Modifier la Grille de Tailles' : 'Créer une Nouvelle Grille de Tailles' }}
+                </h3>
+                <p class="text-xs text-slate-500">
+                  Configurez les tailles possibles en lettres (S, M, L...), en nombres (38, 39, 40...) ou en âge.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                (click)="closeSizeGridModal()"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Nom de la grille de tailles <span class="font-bold text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    [value]="draftGridName()"
+                    (input)="draftGridName.set($any($event.target).value)"
+                    placeholder="ex: Pointures Chaussures (36 à 45) ou Tailles Lettres (XS-3XL)"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Format du système de tailles <span class="font-bold text-rose-600">*</span>
+                  </label>
+                  <select
+                    [value]="draftGridFormat()"
+                    (change)="draftGridFormat.set($any($event.target).value)"
+                    class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-[#163672]"
+                  >
+                    <option value="NUMERIC">Nombres (ex: 38, 39, 40... ou 34, 36, 38...)</option>
+                    <option value="ALPHA">Lettres / Alpha (ex: XS, S, M, L, XL, XXL...)</option>
+                    <option value="AGE">Tranches d'âge Enfant (ex: 2 ans, 4 ans... 14 ans)</option>
+                    <option value="ONE_SIZE">Taille Unique (TU)</option>
+                    <option value="CUSTOM">Sur-mesure / Mixte</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Compatibilité Genre / Public cible
+                  </label>
+                  <select
+                    [value]="draftGridAudience()"
+                    (change)="draftGridAudience.set($any($event.target).value)"
+                    class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800"
+                  >
+                    <option value="UNIVERSAL">Universel (Compatible Enfant, Homme, Femme, Unisexe)</option>
+                    <option value="ADULT">Adulte / Collège / Lycée (Homme, Femme, Unisexe)</option>
+                    <option value="KIDS">Enfant / Primaire uniquement</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Description courte
+                  </label>
+                  <input
+                    type="text"
+                    [value]="draftGridDescription()"
+                    (input)="draftGridDescription.set($any($event.target).value)"
+                    placeholder="ex: Tailles en nombres continus pour pantalons, chemises ou chaussures"
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <!-- GÉNÉRATEURS AUTOMATIQUES E-COMMERCE (PLAGE NUMÉRIQUE 38, 39, 40... OU LETTRES) -->
+              <div class="rounded-2xl border border-indigo-200/80 bg-indigo-50/50 p-4 space-y-3">
+                <div class="text-xs font-extrabold uppercase tracking-wider text-[#163672]">
+                  Outils de génération rapide des tailles
+                </div>
+
+                <!-- Générateur de plage numérique (ex: 38, 39, 40... ou 34, 36, 38...) -->
+                <div class="flex flex-wrap items-end gap-2.5 rounded-xl border border-slate-200 bg-white p-3">
+                  <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-500">De (Nombre)</label>
+                    <input
+                      type="number"
+                      [value]="numericRangeStart()"
+                      (input)="numericRangeStart.set(+$any($event.target).value || 24)"
+                      class="mt-0.5 w-20 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-extrabold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-500">À (Nombre)</label>
+                    <input
+                      type="number"
+                      [value]="numericRangeEnd()"
+                      (input)="numericRangeEnd.set(+$any($event.target).value || 46)"
+                      class="mt-0.5 w-20 rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-extrabold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold uppercase text-slate-500">Pas d'incrément</label>
+                    <select
+                      [value]="numericRangeStep()"
+                      (change)="numericRangeStep.set(+$any($event.target).value || 1)"
+                      class="mt-0.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold text-slate-800"
+                    >
+                      <option [value]="1">Pas de 1 (ex: 38, 39, 40, 41...)</option>
+                      <option [value]="2">Pas de 2 (ex: 34, 36, 38, 40...)</option>
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    class="rounded-xl bg-[#16803c] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#146c32] cursor-pointer"
+                    (click)="generateNumericSizesIntoDraft()"
+                  >
+                    + Générer les tailles en nombres
+                  </button>
+                </div>
+
+                <!-- Presets rapides en 1 clic -->
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="text-[11px] font-semibold text-slate-500">Pré-remplir avec :</span>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="setDraftGridPreset(['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'], 'ALPHA', 'ADULT')"
+                  >
+                    Lettres (XS à 3XL)
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="setDraftGridPreset(['36', '37', '38', '39', '40', '41', '42', '43', '44', '45'], 'NUMERIC', 'UNIVERSAL')"
+                  >
+                    Nombres continus (36, 37, 38, 39, 40..45)
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="setDraftGridPreset(['34', '36', '38', '40', '42', '44', '46', '48'], 'NUMERIC', 'UNIVERSAL')"
+                  >
+                    Confection / Pantalons (34, 36, 38..48)
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="setDraftGridPreset(['AGE_2', 'AGE_4', 'AGE_6', 'AGE_8', 'AGE_10', 'AGE_12', 'AGE_14'], 'AGE', 'KIDS')"
+                  >
+                    Enfant (2 à 14 ans)
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="setDraftGridPreset(['TU'], 'ONE_SIZE', 'UNIVERSAL')"
+                  >
+                    Taille Unique (TU)
+                  </button>
+                </div>
+
+                <!-- Saisie libre de tailles séparées par virgule -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    [value]="draftSizeFreeInput()"
+                    (input)="draftSizeFreeInput.set($any($event.target).value)"
+                    (keydown.enter)="$event.preventDefault(); addFreeSizesToDraftGrid()"
+                    placeholder="Saisir une ou plusieurs tailles séparées par virgule (ex: 38, 39, 40 ou XXS, 4XL)..."
+                    class="flex-1 min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900"
+                  />
+                  <button
+                    type="button"
+                    class="rounded-lg bg-[#163672] px-3.5 py-1.5 text-xs font-bold text-white hover:bg-[#0d2554] cursor-pointer"
+                    (click)="addFreeSizesToDraftGrid()"
+                  >
+                    + Ajouter à la grille
+                  </button>
+                </div>
+              </div>
+
+              <!-- LISTE DES TAILLES DE LA GRILLE -->
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">
+                    Tailles incluses dans cette grille ({{ draftGridSizes().length }}) <span class="text-rose-600">*</span>
+                  </span>
+                  @if (draftGridSizes().length > 1) {
+                    <button
+                      type="button"
+                      class="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                      (click)="draftGridSizes.set([])"
+                    >
+                      Tout vider
+                    </button>
+                  }
+                </div>
+
+                <div class="flex flex-wrap gap-1.5">
+                  @for (sz of draftGridSizes(); track sz) {
+                    <span class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-extrabold text-[#163672] shadow-2xs">
+                      <span>{{ formatSizeLabelFr(sz) }}</span>
+                      <button
+                        type="button"
+                        class="rounded text-slate-400 hover:text-rose-600 cursor-pointer"
+                        title="Retirer cette taille"
+                        (click)="removeSizeFromDraftGrid(sz)"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  } @empty {
+                    <p class="text-xs text-slate-400 py-2">
+                      Aucune taille dans la grille. Utilisez le générateur ou le champ ci-dessus pour ajouter des tailles.
+                    </p>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  (click)="closeSizeGridModal()"
+                >
+                  {{ 'common.cancel' | t }}
+                </button>
+                <button
+                  type="button"
+                  [disabled]="!draftGridName().trim() || draftGridSizes().length === 0"
+                  class="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
+                  (click)="saveSizeGridModal()"
+                >
+                  Enregistrer la Grille de Tailles
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- POPIN (Modale) Création / Modification d'un Type de Produit Commercialisé & Tailles Associées -->
+      @if (showProductTypeModal()) {
+        <div class="ui-modal-backdrop">
+          <div class="ui-modal-panel max-w-2xl">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-slate-900">
+                  {{ editingProductTypeCode() ? 'Configurer le Type de Produit & ses Tailles' : 'Nouveau Type de Produit Commercialisé' }}
+                </h3>
+                <p class="text-xs text-slate-500">
+                  Associez à ce type de produit ses grilles de tailles (S/M/L, 38/39/40, 34/36/38, Enfant...) et ses tailles par défaut.
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                (click)="closeProductTypeModal()"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-12 items-center">
+                <div class="sm:col-span-2 flex justify-center">
+                  <img
+                    [src]="getGarmentSvgDataUrl(draftProductTypeCode() || 'POLO', 'Bleu Marine', draftProductTypeSilhouette())"
+                    alt="Aperçu silhouette"
+                    class="h-16 w-16 rounded-2xl border border-slate-200 bg-slate-50 object-contain p-1.5 shadow-2xs"
+                  />
+                </div>
+                <div class="sm:col-span-5">
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Nom du type de produit commercialisé <span class="font-bold text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    [value]="draftProductTypeLabel()"
+                    (input)="onDraftProductTypeLabelInput($any($event.target).value)"
+                    placeholder="ex: Pantalon / Jupe, Chaussures, Polo..."
+                    class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900"
+                  />
+                </div>
+                <div class="sm:col-span-5">
+                  <label class="block text-xs font-semibold text-slate-700">
+                    Silhouette visuelle (Catalogue & PDF)
+                  </label>
+                  <select
+                    [value]="draftProductTypeSilhouette()"
+                    (change)="draftProductTypeSilhouette.set($any($event.target).value)"
+                    class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-[#163672]"
+                  >
+                    <option value="TOP_SHORT">👕 Haut manches courtes (Polo, T-Shirt...)</option>
+                    <option value="TOP_LONG">🧥 Haut manches longues (Chemise, Sweat, Pull, Veste...)</option>
+                    <option value="BOTTOM">👖 Bas / Pantalon / Jupe / Bermuda</option>
+                    <option value="SHOES">👟 Chaussures / Baskets / Pointures</option>
+                    <option value="ACCESSORY">👔 Accessoire (Cravate, Casquette, Écharpe, Sac...)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Choix des Grilles de Tailles associées à ce Type de Produit -->
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-[#163672]">
+                  1. Grille(s) de Tailles Associée(s) à ce Type de Produit <span class="text-rose-600">*</span>
+                </label>
+                <p class="text-[11px] text-slate-500">
+                  Cochez les systèmes de tailles compatibles avec ce type de produit (ex: Tailles en nombres 34-48 pour un Pantalon, 36-45 pour des Chaussures, ou Lettres XS-3XL pour un Polo).
+                </p>
+
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 pt-1">
+                  @for (grid of workflowStore.sizeGrids(); track grid.id) {
+                    <label
+                      class="flex items-start gap-2.5 rounded-xl border p-3 transition cursor-pointer"
+                      [class.border-[#163672]]="draftProductTypeGridIds().includes(grid.id)"
+                      [class.bg-indigo-50/60]="draftProductTypeGridIds().includes(grid.id)"
+                      [class.border-slate-200]="!draftProductTypeGridIds().includes(grid.id)"
+                      [class.bg-white]="!draftProductTypeGridIds().includes(grid.id)"
+                    >
+                      <input
+                        type="checkbox"
+                        class="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#163672]"
+                        [checked]="draftProductTypeGridIds().includes(grid.id)"
+                        (change)="toggleDraftProductTypeGrid(grid.id)"
+                      />
+                      <div class="text-xs">
+                        <div class="font-bold text-slate-900">{{ grid.name }}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5">
+                          {{ grid.sizes.slice(0, 8).map(formatSizeLabelFr).join(', ') }}{{ grid.sizes.length > 8 ? '...' : '' }}
+                        </div>
+                      </div>
+                    </label>
+                  }
+                </div>
+              </div>
+
+              <!-- Sélection des Tailles associées par défaut -->
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <label class="block text-xs font-extrabold uppercase tracking-wider text-[#163672]">
+                      2. Tailles Associées par Défaut ({{ draftProductTypeDefaultSizes().length }} sélectionnée(s)) <span class="text-rose-600">*</span>
+                    </label>
+                    <p class="text-[11px] text-slate-500">
+                      Ces tailles seront automatiquement pré-cochées lors de la création d'un produit de type « {{ draftProductTypeLabel() || 'ce type' }} ».
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                    (click)="selectAllSizesFromLinkedGrids()"
+                  >
+                    Tout cocher dans les grilles liées
+                  </button>
+                </div>
+
+                <div class="flex flex-wrap gap-1.5 pt-1">
+                  @for (sz of availableSizesForDraftProductType(); track sz) {
+                    <button
+                      type="button"
+                      class="rounded-lg border px-2.5 py-1 text-xs font-bold transition cursor-pointer"
+                      [class.border-[#163672]]="draftProductTypeDefaultSizes().includes(sz)"
+                      [class.bg-[#163672]]="draftProductTypeDefaultSizes().includes(sz)"
+                      [class.text-white]="draftProductTypeDefaultSizes().includes(sz)"
+                      [class.border-slate-300]="!draftProductTypeDefaultSizes().includes(sz)"
+                      [class.bg-white]="!draftProductTypeDefaultSizes().includes(sz)"
+                      [class.text-slate-700]="!draftProductTypeDefaultSizes().includes(sz)"
+                      (click)="toggleDraftProductTypeDefaultSize(sz)"
+                    >
+                      {{ formatSizeLabelFr(sz) }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  (click)="closeProductTypeModal()"
+                >
+                  {{ 'common.cancel' | t }}
+                </button>
+                <button
+                  type="button"
+                  [disabled]="!draftProductTypeLabel().trim() || draftProductTypeGridIds().length === 0 || draftProductTypeDefaultSizes().length === 0"
+                  class="rounded-xl bg-[#16803c] px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#146c32] disabled:opacity-40 cursor-pointer"
+                  (click)="saveProductTypeModal()"
+                >
+                  Enregistrer le Type de Produit & ses Tailles
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </section>
   `,
 })
 export class AdminCatalogListComponent {
   readonly workflowStore = inject(UniformWorkflowStore);
   readonly genders = ALL_GENDERS;
-  readonly productTypes = ALL_PRODUCT_TYPES;
   readonly isImageUrl = isImageUrl;
   readonly getGarmentSvgDataUrl = getGarmentSvgDataUrl;
+  readonly formatSizeLabelFr = (sz: string) => formatSizeLabelFr(sz, false);
 
-  readonly activeTab = signal<'CATALOG' | 'VARIANTS_STOCK'>('CATALOG');
+  readonly activeTab = signal<'CATALOG' | 'ECOMMERCE_CONFIG' | 'VARIANTS_STOCK'>('CATALOG');
   readonly showCatalogModal = signal<boolean>(false);
   readonly editingCatalogItemId = signal<string | null>(null);
   readonly catalogSubmitted = signal<boolean>(false);
   readonly itemToDelete = signal<AdminCatalogItemResponse | null>(null);
   readonly selectedProductSizes = signal<readonly Size[]>([...KIDS_SIZES]);
+  readonly customSizeInputInProductModal = signal<string>('');
+
+  // État Modale Grille de Tailles (SizeGridConfig)
+  readonly showSizeGridModal = signal<boolean>(false);
+  readonly editingSizeGridId = signal<string | null>(null);
+  readonly draftGridName = signal<string>('');
+  readonly draftGridFormat = signal<SizeSystemFormat>('NUMERIC');
+  readonly draftGridAudience = signal<SizeTargetAudience>('UNIVERSAL');
+  readonly draftGridDescription = signal<string>('');
+  readonly draftGridSizes = signal<readonly string[]>([]);
+  readonly draftSizeFreeInput = signal<string>('');
+  readonly numericRangeStart = signal<number>(36);
+  readonly numericRangeEnd = signal<number>(45);
+  readonly numericRangeStep = signal<number>(1);
+
+  // État Modale Type de Produit (ProductTypeConfig)
+  readonly showProductTypeModal = signal<boolean>(false);
+  readonly editingProductTypeCode = signal<string | null>(null);
+  readonly draftProductTypeCode = signal<string>('');
+  readonly draftProductTypeLabel = signal<string>('');
+  readonly draftProductTypeSilhouette = signal<ProductSilhouette>('TOP_SHORT');
+  readonly draftProductTypeGridIds = signal<readonly string[]>(['KIDS_AGE', 'ALPHA_ADULT']);
+  readonly draftProductTypeDefaultSizes = signal<readonly string[]>([]);
 
   // Filtres sur les en-têtes du tableau, tri & pagination
   readonly filterProduct = signal<string>('');
@@ -2005,10 +2811,82 @@ export class AdminCatalogListComponent {
 
   readonly availableSizesForClient = computed<readonly Size[]>(() => {
     const ct = this.workflowStore.selectedClient()?.clientType;
+    const allConfigured = this.workflowStore.allConfiguredSizes();
     if (ct === 'PRIMARY_SCHOOL') {
-      return KIDS_SIZES;
+      return allConfigured.filter((sz) => !isStrictAdultAlphaSize(sz));
     }
-    return [...KIDS_SIZES, ...ADULT_SIZES];
+    return allConfigured;
+  });
+
+  readonly availableSizesForProductModal = computed<readonly Size[]>(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    const currentTypeCode = this.catalogForm.controls.productType.value;
+    const ptConfig = this.workflowStore.resolveProductTypeConfig(currentTypeCode);
+    const grids = this.workflowStore.sizeGrids();
+
+    if (ptConfig) {
+      for (const gridId of ptConfig.sizeGridIds) {
+        const g = grids.find((item) => item.id === gridId);
+        if (g) {
+          for (const sz of g.sizes) {
+            if (!seen.has(sz)) {
+              seen.add(sz);
+              result.push(sz);
+            }
+          }
+        }
+      }
+      for (const sz of ptConfig.defaultSizes) {
+        if (!seen.has(sz)) {
+          seen.add(sz);
+          result.push(sz);
+        }
+      }
+    }
+
+    for (const sz of this.selectedProductSizes()) {
+      if (!seen.has(sz)) {
+        seen.add(sz);
+        result.push(sz);
+      }
+    }
+
+    for (const sz of this.availableSizesForClient()) {
+      if (!seen.has(sz)) {
+        seen.add(sz);
+        result.push(sz);
+      }
+    }
+    return result;
+  });
+
+  readonly availableSizesForDraftProductType = computed<readonly string[]>(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    const selectedGridIds = this.draftProductTypeGridIds();
+    const grids = this.workflowStore.sizeGrids();
+    for (const gridId of selectedGridIds) {
+      const grid = grids.find((g) => g.id === gridId);
+      if (grid) {
+        for (const sz of grid.sizes) {
+          if (!seen.has(sz)) {
+            seen.add(sz);
+            result.push(sz);
+          }
+        }
+      }
+    }
+    for (const sz of this.draftProductTypeDefaultSizes()) {
+      if (!seen.has(sz)) {
+        seen.add(sz);
+        result.push(sz);
+      }
+    }
+    if (result.length === 0) {
+      return this.workflowStore.allConfiguredSizes();
+    }
+    return result;
   });
 
   readonly previewB2cPrice = signal<number>(250);
@@ -2024,9 +2902,16 @@ export class AdminCatalogListComponent {
     source: this.allowedGenders,
     computation: (genders) => genders[0] ?? 'KIDS',
   });
-  readonly previewAllowedSizes = computed<readonly Size[]>(() =>
-    getAllowedSizesForGender(this.previewGender(), this.workflowStore.selectedClient()?.clientType)
-  );
+  readonly previewAllowedSizes = computed<readonly Size[]>(() => {
+    const gender = this.previewGender();
+    const clientType = this.workflowStore.selectedClient()?.clientType;
+    const isKids = clientType === 'PRIMARY_SCHOOL' || gender === 'KIDS';
+    const allSizes = this.workflowStore.allConfiguredSizes();
+    const filtered = allSizes.filter((sz) =>
+      isKids ? !isStrictAdultAlphaSize(sz) : !isStrictKidsAgeSize(sz)
+    );
+    return filtered.length > 0 ? filtered : getAllowedSizesForGender(gender, clientType);
+  });
   readonly previewSelectedSize = linkedSignal<readonly Size[], Size>({
     source: this.previewAllowedSizes,
     computation: (sizes) => sizes[0] ?? 'M',
@@ -2097,7 +2982,8 @@ export class AdminCatalogListComponent {
     if (isImageUrl(item.frontVisualStorageKey)) {
       return item.frontVisualStorageKey!;
     }
-    return getGarmentSvgDataUrl(item.productType, item.colorReference);
+    const ptConfig = this.workflowStore.resolveProductTypeConfig(item.productType);
+    return getGarmentSvgDataUrl(item.productType, item.colorReference, ptConfig?.silhouette);
   }
 
   async onCatalogVisualSelected(
@@ -2128,11 +3014,53 @@ export class AdminCatalogListComponent {
   }
 
   resolveProductTypeLabel(productType?: string | null): string {
-    if (!productType) {
-      return 'Polo';
+    return this.workflowStore.resolveProductTypeLabel(productType);
+  }
+
+  resolveSizeGridName(gridId: string): string {
+    const found = this.workflowStore.sizeGrids().find((g) => g.id === gridId);
+    return found ? found.name : gridId;
+  }
+
+  formatSizeSystemBadge(format: SizeSystemFormat): string {
+    switch (format) {
+      case 'ALPHA':
+        return 'Lettres (S, M, L...)';
+      case 'NUMERIC':
+        return 'Nombres (38, 39, 40...)';
+      case 'AGE':
+        return 'Âges (2-14 ans)';
+      case 'ONE_SIZE':
+        return 'Taille Unique';
+      default:
+        return 'Sur-mesure';
     }
-    const found = ALL_PRODUCT_TYPES.find((p) => p.code === productType.toUpperCase());
-    return found ? found.label : productType;
+  }
+
+  formatAudienceBadge(audience: SizeTargetAudience): string {
+    switch (audience) {
+      case 'ADULT':
+        return 'Adulte / Lycée';
+      case 'KIDS':
+        return 'Enfant / Primaire';
+      default:
+        return 'Universel (Tous genres)';
+    }
+  }
+
+  formatSilhouetteLabel(silhouette: ProductSilhouette): string {
+    switch (silhouette) {
+      case 'TOP_SHORT':
+        return 'Haut manches courtes';
+      case 'TOP_LONG':
+        return 'Haut manches longues';
+      case 'BOTTOM':
+        return 'Pantalon / Jupe';
+      case 'SHOES':
+        return 'Chaussures / Pointures';
+      case 'ACCESSORY':
+        return 'Accessoire';
+    }
   }
 
   formatAvailableSizes(availableSizes?: string | null): string {
@@ -2143,7 +3071,7 @@ export class AdminCatalogListComponent {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((s) => (s.startsWith('AGE_') ? `${s.replace('AGE_', '')}a` : s))
+      .map((s) => formatSizeLabelFr(s, false))
       .join(', ');
   }
 
@@ -2156,6 +3084,58 @@ export class AdminCatalogListComponent {
     });
   }
 
+  onModalProductTypeChange(newProductTypeCode: string): void {
+    const clientType = this.workflowStore.selectedClient()?.clientType;
+    const defaultSizes = this.workflowStore.getDefaultSizesForProductType(
+      newProductTypeCode,
+      clientType
+    );
+    if (defaultSizes.length > 0) {
+      this.selectedProductSizes.set([...defaultSizes]);
+    }
+  }
+
+  applyDefaultSizesForCurrentProductType(): void {
+    this.onModalProductTypeChange(this.catalogForm.controls.productType.value);
+  }
+
+  applySizeGridToProduct(grid: SizeGridConfig, append: boolean): void {
+    if (!append) {
+      this.selectedProductSizes.set([...grid.sizes]);
+      return;
+    }
+    this.selectedProductSizes.update((curr) => {
+      const next = [...curr];
+      for (const sz of grid.sizes) {
+        if (!next.includes(sz)) {
+          next.push(sz);
+        }
+      }
+      return next;
+    });
+  }
+
+  addCustomSizesToProductModal(): void {
+    const raw = this.customSizeInputInProductModal().trim();
+    if (!raw) {
+      return;
+    }
+    const tokens = this.parseFreeSizeTokens(raw);
+    if (tokens.length === 0) {
+      return;
+    }
+    this.selectedProductSizes.update((curr) => {
+      const next = [...curr];
+      for (const t of tokens) {
+        if (!next.includes(t)) {
+          next.push(t);
+        }
+      }
+      return next;
+    });
+    this.customSizeInputInProductModal.set('');
+  }
+
   selectAllKidsSizes(): void {
     this.selectedProductSizes.set([...KIDS_SIZES]);
   }
@@ -2164,14 +3144,251 @@ export class AdminCatalogListComponent {
     this.selectedProductSizes.set([...KIDS_SIZES, ...ADULT_SIZES]);
   }
 
+  // --- GESTION DES GRILLES DE TAILLES (SizeGridConfig) ---
+  openCreateSizeGridModal(): void {
+    this.editingSizeGridId.set(null);
+    this.draftGridName.set('');
+    this.draftGridFormat.set('NUMERIC');
+    this.draftGridAudience.set('UNIVERSAL');
+    this.draftGridDescription.set('');
+    this.draftGridSizes.set(['38', '39', '40', '41', '42', '43', '44']);
+    this.draftSizeFreeInput.set('');
+    this.numericRangeStart.set(38);
+    this.numericRangeEnd.set(44);
+    this.numericRangeStep.set(1);
+    this.showSizeGridModal.set(true);
+  }
+
+  openEditSizeGridModal(grid: SizeGridConfig): void {
+    this.editingSizeGridId.set(grid.id);
+    this.draftGridName.set(grid.name);
+    this.draftGridFormat.set(grid.format);
+    this.draftGridAudience.set(grid.audience);
+    this.draftGridDescription.set(grid.description);
+    this.draftGridSizes.set([...grid.sizes]);
+    this.draftSizeFreeInput.set('');
+    this.showSizeGridModal.set(true);
+  }
+
+  closeSizeGridModal(): void {
+    this.showSizeGridModal.set(false);
+    this.editingSizeGridId.set(null);
+  }
+
+  setDraftGridPreset(
+    sizes: readonly string[],
+    format: SizeSystemFormat,
+    audience: SizeTargetAudience
+  ): void {
+    this.draftGridSizes.set([...sizes]);
+    this.draftGridFormat.set(format);
+    this.draftGridAudience.set(audience);
+  }
+
+  generateNumericSizesIntoDraft(): void {
+    const start = Math.min(this.numericRangeStart(), this.numericRangeEnd());
+    const end = Math.max(this.numericRangeStart(), this.numericRangeEnd());
+    const step = Math.max(1, this.numericRangeStep());
+    const generated: string[] = [];
+    for (let val = start; val <= end && generated.length < 40; val += step) {
+      generated.push(String(val));
+    }
+    this.draftGridFormat.set('NUMERIC');
+    this.draftGridSizes.update((curr) => {
+      const next = [...curr];
+      for (const sz of generated) {
+        if (!next.includes(sz)) {
+          next.push(sz);
+        }
+      }
+      return next;
+    });
+  }
+
+  addFreeSizesToDraftGrid(): void {
+    const raw = this.draftSizeFreeInput().trim();
+    if (!raw) {
+      return;
+    }
+    const tokens = this.parseFreeSizeTokens(raw);
+    this.draftGridSizes.update((curr) => {
+      const next = [...curr];
+      for (const t of tokens) {
+        if (!next.includes(t)) {
+          next.push(t);
+        }
+      }
+      return next;
+    });
+    this.draftSizeFreeInput.set('');
+  }
+
+  removeSizeFromDraftGrid(size: string): void {
+    this.draftGridSizes.update((curr) => curr.filter((s) => s !== size));
+  }
+
+  saveSizeGridModal(): void {
+    const name = this.draftGridName().trim();
+    const sizes = this.draftGridSizes();
+    if (!name || sizes.length === 0) {
+      return;
+    }
+    const id =
+      this.editingSizeGridId() ??
+      name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 28) +
+        '_' +
+        Math.floor(100 + Math.random() * 900);
+
+    this.workflowStore.upsertSizeGridConfig(
+      {
+        id,
+        name,
+        format: this.draftGridFormat(),
+        audience: this.draftGridAudience(),
+        description: this.draftGridDescription().trim(),
+        sizes,
+      },
+      () => this.closeSizeGridModal()
+    );
+  }
+
+  // --- GESTION DES TYPES DE PRODUITS COMMERCIALISÉS (ProductTypeConfig) ---
+  openCreateProductTypeModal(): void {
+    this.editingProductTypeCode.set(null);
+    this.draftProductTypeCode.set('');
+    this.draftProductTypeLabel.set('');
+    this.draftProductTypeSilhouette.set('TOP_SHORT');
+    const firstGrid = this.workflowStore.sizeGrids()[0];
+    this.draftProductTypeGridIds.set(firstGrid ? [firstGrid.id] : ['ALPHA_ADULT']);
+    this.draftProductTypeDefaultSizes.set(firstGrid ? [...firstGrid.sizes] : [...ADULT_SIZES]);
+    this.showProductTypeModal.set(true);
+  }
+
+  openEditProductTypeModal(pt: ProductTypeConfig): void {
+    this.editingProductTypeCode.set(pt.code);
+    this.draftProductTypeCode.set(pt.code);
+    this.draftProductTypeLabel.set(pt.label);
+    this.draftProductTypeSilhouette.set(pt.silhouette);
+    this.draftProductTypeGridIds.set([...pt.sizeGridIds]);
+    this.draftProductTypeDefaultSizes.set([...pt.defaultSizes]);
+    this.showProductTypeModal.set(true);
+  }
+
+  closeProductTypeModal(): void {
+    this.showProductTypeModal.set(false);
+    this.editingProductTypeCode.set(null);
+  }
+
+  onDraftProductTypeLabelInput(label: string): void {
+    this.draftProductTypeLabel.set(label);
+    if (!this.editingProductTypeCode()) {
+      const slug = label
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 28);
+      this.draftProductTypeCode.set(slug || 'CUSTOM_PRODUCT');
+    }
+  }
+
+  toggleDraftProductTypeGrid(gridId: string): void {
+    const currentIds = this.draftProductTypeGridIds();
+    const grid = this.workflowStore.sizeGrids().find((g) => g.id === gridId);
+    if (currentIds.includes(gridId)) {
+      if (currentIds.length <= 1) {
+        return;
+      }
+      this.draftProductTypeGridIds.set(currentIds.filter((id) => id !== gridId));
+    } else {
+      this.draftProductTypeGridIds.set([...currentIds, gridId]);
+      if (grid) {
+        this.draftProductTypeDefaultSizes.update((curr) => {
+          const next = [...curr];
+          for (const sz of grid.sizes) {
+            if (!next.includes(sz)) {
+              next.push(sz);
+            }
+          }
+          return next;
+        });
+      }
+    }
+  }
+
+  selectAllSizesFromLinkedGrids(): void {
+    this.draftProductTypeDefaultSizes.set([...this.availableSizesForDraftProductType()]);
+  }
+
+  toggleDraftProductTypeDefaultSize(size: string): void {
+    this.draftProductTypeDefaultSizes.update((curr) => {
+      if (curr.includes(size)) {
+        return curr.length > 1 ? curr.filter((s) => s !== size) : curr;
+      }
+      return [...curr, size];
+    });
+  }
+
+  saveProductTypeModal(): void {
+    const label = this.draftProductTypeLabel().trim();
+    const code = (this.editingProductTypeCode() || this.draftProductTypeCode().trim() || 'CUSTOM_TYPE').toUpperCase();
+    const gridIds = this.draftProductTypeGridIds();
+    const defaultSizes = this.draftProductTypeDefaultSizes();
+    if (!label || gridIds.length === 0 || defaultSizes.length === 0) {
+      return;
+    }
+    this.workflowStore.upsertProductTypeConfig(
+      {
+        code,
+        label,
+        silhouette: this.draftProductTypeSilhouette(),
+        sizeGridIds: gridIds,
+        defaultSizes,
+      },
+      () => this.closeProductTypeModal()
+    );
+  }
+
+  resetConfigToDefaults(): void {
+    this.workflowStore.resetCatalogConfigurationToDefaults();
+  }
+
+  private parseFreeSizeTokens(raw: string): string[] {
+    return raw
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((token) => {
+        const ageMatch = /^(\d+)\s*(?:ans|a)$/i.exec(token);
+        if (ageMatch) {
+          return `AGE_${ageMatch[1]}`;
+        }
+        if (/^taille\s+unique$/i.test(token)) {
+          return 'TU';
+        }
+        return token.toUpperCase();
+      });
+  }
+
   openCreateCatalogModal(): void {
     this.workflowStore.refreshSuppliers();
     this.editingCatalogItemId.set(null);
     this.catalogSubmitted.set(false);
-    this.selectedProductSizes.set([...KIDS_SIZES]);
+    this.customSizeInputInProductModal.set('');
+    const defaultType = this.workflowStore.productTypes()[0]?.code ?? 'POLO';
+    const clientType = this.workflowStore.selectedClient()?.clientType;
+    const defaultSizes = this.workflowStore.getDefaultSizesForProductType(defaultType, clientType);
+    this.selectedProductSizes.set(defaultSizes.length > 0 ? [...defaultSizes] : [...KIDS_SIZES]);
     const defaultSupplierId = this.workflowStore.suppliers()[0]?.id ?? '';
     this.catalogForm.reset({
-      productType: 'POLO',
+      productType: defaultType,
       supplierId: defaultSupplierId,
       referenceCode: '',
       name: '',

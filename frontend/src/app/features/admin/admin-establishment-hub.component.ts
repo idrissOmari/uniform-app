@@ -2,7 +2,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '../../core/i18n/i18n.service';
-import { ALL_PRODUCT_TYPES, AdminCatalogItemResponse } from '../../core/models/uniform.models';
+import { AdminCatalogItemResponse } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
 import { getGarmentSvgDataUrl, isImageUrl } from '../../core/utils/image-upload.util';
 
@@ -308,17 +308,14 @@ export class AdminEstablishmentHubComponent {
   }
 
   resolveProductTypeLabel(productType?: string | null): string {
-    if (!productType) {
-      return 'Polo';
-    }
-    const found = ALL_PRODUCT_TYPES.find((p) => p.code === productType.toUpperCase());
-    return found ? found.label : productType;
+    return this.workflowStore.resolveProductTypeLabel(productType);
   }
 
   resolveItemPreview(item: AdminCatalogItemResponse): string {
     if (isImageUrl(item.frontVisualStorageKey)) {
       return item.frontVisualStorageKey!;
     }
-    return getGarmentSvgDataUrl(item.productType, item.colorReference);
+    const ptConfig = this.workflowStore.resolveProductTypeConfig(item.productType);
+    return getGarmentSvgDataUrl(item.productType, item.colorReference, ptConfig?.silhouette);
   }
 }

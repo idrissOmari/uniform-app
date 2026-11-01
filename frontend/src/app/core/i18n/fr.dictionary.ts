@@ -56,7 +56,8 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   UNISEX: 'Unisexe',
   KIDS: 'Enfant',
 
-  // Grilles de tailles Adulte & Enfant (avec préfixe et clé directe)
+  // Grilles de tailles Adulte, Enfant, Numériques & Taille Unique (avec préfixe et clé directe)
+  'size.XXS': 'XXS (Très Très Petit)',
   'size.XS': 'XS (Très Petit)',
   'size.S': 'S (Petit)',
   'size.M': 'M (Moyen)',
@@ -64,6 +65,7 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   'size.XL': 'XL (Très Grand)',
   'size.XXL': 'XXL (Double XL)',
   'size.XXXL': 'XXXL (Triple XL)',
+  'size.XXXXL': '4XL (Quadruple XL)',
   'size.AGE_2': '2 ans',
   'size.AGE_4': '4 ans',
   'size.AGE_6': '6 ans',
@@ -71,6 +73,9 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   'size.AGE_10': '10 ans',
   'size.AGE_12': '12 ans',
   'size.AGE_14': '14 ans',
+  'size.AGE_16': '16 ans',
+  'size.TU': 'TU (Taille Unique)',
+  XXS: 'XXS',
   XS: 'XS',
   S: 'S',
   M: 'M',
@@ -78,6 +83,7 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   XL: 'XL',
   XXL: 'XXL',
   XXXL: 'XXXL',
+  XXXXL: '4XL',
   AGE_2: '2 ans',
   AGE_4: '4 ans',
   AGE_6: '6 ans',
@@ -85,6 +91,8 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   AGE_10: '10 ans',
   AGE_12: '12 ans',
   AGE_14: '14 ans',
+  AGE_16: '16 ans',
+  TU: 'Taille Unique',
 
   // Rôles RBAC
   'role.ROLE_ADMIN': 'Admin',

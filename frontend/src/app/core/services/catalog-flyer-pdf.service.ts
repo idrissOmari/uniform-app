@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
-import { FR_DICTIONARY } from '../i18n/fr.dictionary';
 import {
   ALL_PRODUCT_TYPES,
   AdminCatalogItemResponse,
   B2cCatalogItemResponse,
   ClientResponse,
+  formatSizeLabelFr,
 } from '../models/uniform.models';
 import {
   getGarmentSvgDataUrl,
@@ -510,7 +510,7 @@ export class CatalogFlyerPdfGeneratorService {
         .split(',')
         .map((s) => s.trim())
         .filter((s) => s.length > 0)
-        .map((code) => FR_DICTIONARY[code] || code);
+        .map((code) => formatSizeLabelFr(code, false));
     }
     if (client.clientType === 'PRIMARY_SCHOOL') {
       return ['2 ans', '4 ans', '6 ans', '8 ans', '10 ans', '12 ans', '14 ans'];

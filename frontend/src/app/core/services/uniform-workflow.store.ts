@@ -11,16 +11,21 @@ import {
   B2cCatalogItemResponse,
   B2cOrderDetailResponse,
   B2cOrderSummaryResponse,
+  CatalogConfiguration,
   ClientResponse,
   ClientSectionInput,
   ClientStockResponse,
   ClientType,
   CreateOrUpdateSupplierRequest,
+  DEFAULT_CATALOG_CONFIGURATION,
   Gender,
   GlobalStockItemResponse,
   InviteUserRequest,
+  isStrictAdultAlphaSize,
   ProblemDetails,
+  ProductTypeConfig,
   Size,
+  SizeGridConfig,
   SupplierResponse,
   UpdateUserRequest,
   UpsertClientStockRequest,
@@ -29,6 +34,8 @@ import {
 import { CatalogFlyerPdfGeneratorService } from './catalog-flyer-pdf.service';
 import { UniformApiService } from './uniform-api.service';
 
+const CATALOG_CONFIG_STORAGE_KEY = 'uniform_app_catalog_config_v1';
+
 @Injectable({ providedIn: 'root' })
 export class UniformWorkflowStore {
   private readonly api = inject(UniformApiService);
@@ -36,6 +43,7 @@ export class UniformWorkflowStore {
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
 
+  private readonly _catalogConfig = signal<CatalogConfiguration>(this.loadCachedCatalogConfig());
   private readonly _clients = signal<readonly ClientResponse[]>([]);
   private readonly _selectedClientId = signal<string | null>(null);
   private readonly _catalogItems = signal<readonly B2cCatalogItemResponse[]>([]);
@@ -54,6 +62,24 @@ export class UniformWorkflowStore {
   private readonly _cashSaleModalOpen = signal<boolean>(false);
   private readonly _newClientModalOpen = signal<boolean>(false);
   private readonly _activeB2cSubView = signal<'DASHBOARD' | 'ORDERS' | 'CAISSE' | 'STOCK'>('DASHBOARD');
+
+  readonly catalogConfig = this._catalogConfig.asReadonly();
+  readonly sizeGrids = computed<readonly SizeGridConfig[]>(() => this._catalogConfig().sizeGrids);
+  readonly productTypes = computed<readonly ProductTypeConfig[]>(() => this._catalogConfig().productTypes);
+  readonly allConfiguredSizes = computed<readonly string[]>(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const grid of this._catalogConfig().sizeGrids) {
+      for (const sz of grid.sizes) {
+        const clean = sz.trim();
+        if (clean && !seen.has(clean)) {
+          seen.add(clean);
+          list.push(clean);
+        }
+      }
+    }
+    return list;
+  });
 
   readonly clients = this._clients.asReadonly();
   readonly selectedClientId = this._selectedClientId.asReadonly();
@@ -191,6 +217,7 @@ export class UniformWorkflowStore {
   }
 
   loadAuthenticatedWorkspace(): void {
+    this.refreshCatalogConfiguration();
     this.api.listClients().subscribe({
       next: (clients) => {
         this._clients.set(clients);
@@ -226,6 +253,189 @@ export class UniformWorkflowStore {
       this.refreshSuppliers();
       this.refreshGlobalStocks();
     }
+  }
+
+  private loadCachedCatalogConfig(): CatalogConfiguration {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(CATALOG_CONFIG_STORAGE_KEY) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<CatalogConfiguration>;
+        if (
+          Array.isArray(parsed.sizeGrids) &&
+          parsed.sizeGrids.length > 0 &&
+          Array.isArray(parsed.productTypes) &&
+          parsed.productTypes.length > 0
+        ) {
+          return {
+            sizeGrids: parsed.sizeGrids,
+            productTypes: parsed.productTypes,
+          };
+        }
+      }
+    } catch {
+      // Ignore storage errors
+    }
+    return DEFAULT_CATALOG_CONFIGURATION;
+  }
+
+  private persistCachedCatalogConfig(config: CatalogConfiguration): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(CATALOG_CONFIG_STORAGE_KEY, JSON.stringify(config));
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  refreshCatalogConfiguration(): void {
+    this.api.getCatalogConfiguration().subscribe({
+      next: (remoteConfig) => {
+        if (
+          remoteConfig &&
+          Array.isArray(remoteConfig.sizeGrids) &&
+          remoteConfig.sizeGrids.length > 0 &&
+          Array.isArray(remoteConfig.productTypes) &&
+          remoteConfig.productTypes.length > 0
+        ) {
+          this._catalogConfig.set(remoteConfig);
+          this.persistCachedCatalogConfig(remoteConfig);
+        }
+      },
+      error: () => {
+        // Keep cached/default configuration if backend endpoint is unavailable
+      },
+    });
+  }
+
+  saveCatalogConfiguration(config: CatalogConfiguration, onSaved?: () => void): void {
+    this._catalogConfig.set(config);
+    this.persistCachedCatalogConfig(config);
+    this.api.updateCatalogConfiguration(config).subscribe({
+      next: (saved) => {
+        if (saved && Array.isArray(saved.sizeGrids) && Array.isArray(saved.productTypes)) {
+          this._catalogConfig.set(saved);
+          this.persistCachedCatalogConfig(saved);
+        }
+        onSaved?.();
+      },
+      error: () => {
+        // Already persisted in reactive signal & localStorage
+        onSaved?.();
+      },
+    });
+  }
+
+  upsertSizeGridConfig(grid: SizeGridConfig, onSaved?: () => void): void {
+    const current = this._catalogConfig();
+    const exists = current.sizeGrids.some((g) => g.id === grid.id);
+    const nextGrids = exists
+      ? current.sizeGrids.map((g) => (g.id === grid.id ? grid : g))
+      : [...current.sizeGrids, grid];
+    this.saveCatalogConfiguration(
+      {
+        sizeGrids: nextGrids,
+        productTypes: current.productTypes,
+      },
+      onSaved
+    );
+  }
+
+  deleteSizeGridConfig(gridId: string): void {
+    const current = this._catalogConfig();
+    if (current.sizeGrids.length <= 1) {
+      return;
+    }
+    const nextGrids = current.sizeGrids.filter((g) => g.id !== gridId);
+    const fallbackGridId = nextGrids[0]?.id ?? 'ALPHA_ADULT';
+    const nextProductTypes = current.productTypes.map((pt) => {
+      const filteredGridIds = pt.sizeGridIds.filter((id) => id !== gridId);
+      return {
+        ...pt,
+        sizeGridIds: filteredGridIds.length > 0 ? filteredGridIds : [fallbackGridId],
+      };
+    });
+    this.saveCatalogConfiguration({
+      sizeGrids: nextGrids,
+      productTypes: nextProductTypes,
+    });
+  }
+
+  upsertProductTypeConfig(productType: ProductTypeConfig, onSaved?: () => void): void {
+    const current = this._catalogConfig();
+    const exists = current.productTypes.some((pt) => pt.code === productType.code);
+    const nextTypes = exists
+      ? current.productTypes.map((pt) => (pt.code === productType.code ? productType : pt))
+      : [...current.productTypes, productType];
+    this.saveCatalogConfiguration(
+      {
+        sizeGrids: current.sizeGrids,
+        productTypes: nextTypes,
+      },
+      onSaved
+    );
+  }
+
+  deleteProductTypeConfig(code: string): void {
+    const current = this._catalogConfig();
+    if (current.productTypes.length <= 1) {
+      return;
+    }
+    const nextTypes = current.productTypes.filter((pt) => pt.code !== code);
+    this.saveCatalogConfiguration({
+      sizeGrids: current.sizeGrids,
+      productTypes: nextTypes,
+    });
+  }
+
+  resetCatalogConfigurationToDefaults(onSaved?: () => void): void {
+    this.saveCatalogConfiguration(DEFAULT_CATALOG_CONFIGURATION, onSaved);
+  }
+
+  resolveProductTypeConfig(code?: string | null): ProductTypeConfig | null {
+    if (!code) {
+      return this._catalogConfig().productTypes[0] ?? null;
+    }
+    return (
+      this._catalogConfig().productTypes.find((pt) => pt.code === code) ??
+      this._catalogConfig().productTypes[0] ??
+      null
+    );
+  }
+
+  resolveProductTypeLabel(code?: string | null): string {
+    if (!code) {
+      return 'Polo';
+    }
+    const match = this._catalogConfig().productTypes.find((pt) => pt.code === code);
+    return match ? match.label : code;
+  }
+
+  getDefaultSizesForProductType(code?: string | null, clientType?: ClientType | null): readonly string[] {
+    const config = this.resolveProductTypeConfig(code);
+    if (!config) {
+      return [];
+    }
+    let sizes = [...config.defaultSizes];
+    if (sizes.length === 0) {
+      for (const gridId of config.sizeGridIds) {
+        const grid = this._catalogConfig().sizeGrids.find((g) => g.id === gridId);
+        if (grid) {
+          for (const sz of grid.sizes) {
+            if (!sizes.includes(sz)) {
+              sizes.push(sz);
+            }
+          }
+        }
+      }
+    }
+    if (clientType === 'PRIMARY_SCHOOL') {
+      const filteredKidsOrUniversal = sizes.filter((s) => !isStrictAdultAlphaSize(s));
+      if (filteredKidsOrUniversal.length > 0) {
+        sizes = filteredKidsOrUniversal;
+      }
+    }
+    return sizes;
   }
 
   refreshGlobalStocks(): void {

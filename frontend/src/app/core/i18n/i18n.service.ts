@@ -1,4 +1,5 @@
 import { Injectable, Pipe, PipeTransform, inject, signal } from '@angular/core';
+import { formatSizeLabelFr } from '../models/uniform.models';
 import { FR_DICTIONARY } from './fr.dictionary';
 
 @Injectable({ providedIn: 'root' })
@@ -10,7 +11,17 @@ export class I18nService {
       return '';
     }
     const dict = this._dictionary();
-    let translated = dict[key] ?? key;
+    let translated = dict[key];
+    if (!translated) {
+      if (key.startsWith('size.')) {
+        const rawSize = key.slice(5);
+        translated = dict[rawSize] ?? formatSizeLabelFr(rawSize, false);
+      } else if (key.startsWith('AGE_') || key.startsWith('SIZE_')) {
+        translated = formatSizeLabelFr(key, false);
+      } else {
+        translated = key;
+      }
+    }
     if (params) {
       for (const [paramKey, paramValue] of Object.entries(params)) {
         translated = translated.replaceAll(`{{${paramKey}}}`, String(paramValue));

@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 import { AuthStore } from './core/auth/auth.store';
 import { TranslatePipe } from './core/i18n/i18n.service';
 import { UniformWorkflowStore } from './core/services/uniform-workflow.store';
+import { isImageUrl } from './core/utils/image-upload.util';
 
 @Component({
   selector: 'app-root',
@@ -381,16 +382,25 @@ import { UniformWorkflowStore } from './core/services/uniform-workflow.store';
 
                   <!-- Informations de l'établissement + Bouton Imprimer Flyer juste à côté -->
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/50 via-violet-50/30 to-white px-3.5 py-2.5 sm:px-4">
-                    <div class="text-xs min-w-0">
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-extrabold text-slate-900 truncate">{{ activeClient.name }}</span>
-                        <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[10px] font-extrabold text-indigo-700">
-                          {{ ('clientType.short.' + (activeClient.clientType || 'SECONDARY_SCHOOL')) | t }}
-                        </span>
-                      </div>
-                      <div class="mt-0.5 text-slate-500 truncate">
-                        📍 {{ activeClient.address }} ·
-                        <span class="font-semibold text-indigo-700">{{ activeClient.sections?.length || 0 }} section(s)</span>
+                    <div class="flex items-center gap-3 min-w-0">
+                      @if (isImageUrl(activeClient.logoStorageKey)) {
+                        <img
+                          [src]="activeClient.logoStorageKey"
+                          [alt]="activeClient.name"
+                          class="h-10 w-10 rounded-xl border border-indigo-200 bg-white object-contain p-1 shadow-2xs shrink-0"
+                        />
+                      }
+                      <div class="text-xs min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <span class="font-extrabold text-slate-900 truncate">{{ activeClient.name }}</span>
+                          <span class="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[10px] font-extrabold text-indigo-700">
+                            {{ ('clientType.short.' + (activeClient.clientType || 'SECONDARY_SCHOOL')) | t }}
+                          </span>
+                        </div>
+                        <div class="mt-0.5 text-slate-500 truncate">
+                          📍 {{ activeClient.address }} ·
+                          <span class="font-semibold text-indigo-700">{{ activeClient.sections?.length || 0 }} section(s)</span>
+                        </div>
                       </div>
                     </div>
 
@@ -646,6 +656,7 @@ import { UniformWorkflowStore } from './core/services/uniform-workflow.store';
 export class AppComponent {
   readonly authStore = inject(AuthStore);
   readonly workflowStore = inject(UniformWorkflowStore);
+  readonly isImageUrl = isImageUrl;
   private readonly router = inject(Router);
 
   readonly mobileMenuOpen = signal<boolean>(false);

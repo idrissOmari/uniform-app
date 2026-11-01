@@ -167,7 +167,7 @@ export interface B2cCatalogItemResponse {
   readonly garmentStyle: string;
   readonly colorReference: string;
   readonly availableSizes?: string | null;
-  readonly frontVisualStorageKey: string;
+  readonly frontVisualStorageKey: string | null;
   readonly backVisualStorageKey: string | null;
   readonly visualPlacementNotes: string | null;
   readonly b2cUnitPrice: number;
@@ -297,7 +297,7 @@ export interface B2bPurchaseOrderLineResponse {
   readonly itemNameSnapshot?: string;
   readonly garmentStyleSnapshot: string;
   readonly colorReferenceSnapshot: string;
-  readonly frontVisualStorageSnapshot: string;
+  readonly frontVisualStorageSnapshot: string | null;
   readonly backVisualStorageSnapshot: string | null;
 }
 

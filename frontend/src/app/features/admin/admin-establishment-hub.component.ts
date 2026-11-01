@@ -2,8 +2,9 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '../../core/i18n/i18n.service';
-import { ALL_PRODUCT_TYPES } from '../../core/models/uniform.models';
+import { ALL_PRODUCT_TYPES, AdminCatalogItemResponse } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
+import { getGarmentSvgDataUrl, isImageUrl } from '../../core/utils/image-upload.util';
 
 @Component({
   selector: 'app-admin-establishment-hub',
@@ -168,21 +169,28 @@ import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store
 
             <div class="mt-4 divide-y divide-slate-100">
               @for (item of workflowStore.adminCatalogItems().slice(0, 5); track item.id) {
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-3 text-xs">
-                  <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="rounded-md bg-indigo-50 ring-1 ring-inset ring-indigo-200/60 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
-                        {{ resolveProductTypeLabel(item.productType) }}
-                      </span>
-                      <span class="font-bold text-slate-900">{{ item.name }}</span>
-                    </div>
-                    <div class="mt-0.5 text-slate-500">
-                      Fournisseur : <span class="font-semibold text-slate-700">{{ item.supplierName }}</span> · Coloris : {{ item.colorReference }}
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 text-xs">
+                  <div class="flex items-center gap-3 min-w-0">
+                    <img
+                      [src]="resolveItemPreview(item)"
+                      [alt]="item.name"
+                      class="h-11 w-11 rounded-xl border border-slate-200 bg-slate-50 object-contain p-1 shrink-0"
+                    />
+                    <div class="min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-md bg-indigo-50 ring-1 ring-inset ring-indigo-200/60 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                          {{ resolveProductTypeLabel(item.productType) }}
+                        </span>
+                        <span class="font-bold text-slate-900">{{ item.name }}</span>
+                      </div>
+                      <div class="mt-0.5 text-slate-500">
+                        Fournisseur : <span class="font-semibold text-slate-700">{{ item.supplierName }}</span> · Coloris : {{ item.colorReference }}
+                      </div>
                     </div>
                   </div>
                   <div class="flex sm:block items-center justify-between sm:text-right shrink-0">
                     <div class="font-extrabold text-emerald-600">{{ item.b2cUnitPrice | number: '1.2-2' }} DH</div>
-                    <div class="text-[11px] text-slate-400">Achat : {{ item.b2bUnitCost | number: '1.2-2' }} DH</div>
+                    <div class="text-[11px] text-slate-400">Prix TTC</div>
                   </div>
                 </div>
               } @empty {
@@ -305,5 +313,12 @@ export class AdminEstablishmentHubComponent {
     }
     const found = ALL_PRODUCT_TYPES.find((p) => p.code === productType.toUpperCase());
     return found ? found.label : productType;
+  }
+
+  resolveItemPreview(item: AdminCatalogItemResponse): string {
+    if (isImageUrl(item.frontVisualStorageKey)) {
+      return item.frontVisualStorageKey!;
+    }
+    return getGarmentSvgDataUrl(item.productType, item.colorReference);
   }
 }

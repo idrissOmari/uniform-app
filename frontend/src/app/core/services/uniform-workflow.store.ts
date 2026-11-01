@@ -26,11 +26,13 @@ import {
   UpsertClientStockRequest,
   UserAccountResponse,
 } from '../models/uniform.models';
+import { CatalogFlyerPdfGeneratorService } from './catalog-flyer-pdf.service';
 import { UniformApiService } from './uniform-api.service';
 
 @Injectable({ providedIn: 'root' })
 export class UniformWorkflowStore {
   private readonly api = inject(UniformApiService);
+  private readonly catalogFlyerPdfGenerator = inject(CatalogFlyerPdfGeneratorService);
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
 
@@ -557,11 +559,11 @@ export class UniformWorkflowStore {
       supplierId?: string | null;
       supplierName?: string;
       availableSizes?: string | null;
-      frontVisualStorageKey: string;
+      frontVisualStorageKey?: string | null;
       backVisualStorageKey?: string | null;
       visualPlacementNotes?: string | null;
       b2cUnitPrice: number;
-      b2bUnitCost: number;
+      b2bUnitCost?: number | null;
     },
     onSaved?: () => void
   ): void {
@@ -593,11 +595,11 @@ export class UniformWorkflowStore {
       supplierId?: string | null;
       supplierName?: string;
       availableSizes?: string | null;
-      frontVisualStorageKey: string;
+      frontVisualStorageKey?: string | null;
       backVisualStorageKey?: string | null;
       visualPlacementNotes?: string | null;
       b2cUnitPrice: number;
-      b2bUnitCost: number;
+      b2bUnitCost?: number | null;
     },
     onSaved?: () => void
   ): void {
@@ -800,18 +802,20 @@ export class UniformWorkflowStore {
   }
 
   downloadCatalogFlyerPdf(): void {
-    const clientId = this._selectedClientId();
-    if (!clientId) {
+    const client = this.selectedClient();
+    if (!client) {
       return;
     }
     this.clearProblem();
-    this.api.downloadClientCatalogFlyerPdf(clientId).subscribe({
-      next: (blob) => {
+    const items =
+      this._adminCatalogItems().length > 0 ? this._adminCatalogItems() : this._catalogItems();
+    void this.catalogFlyerPdfGenerator
+      .generateCatalogFlyerPdfBlob(client, items)
+      .then((blob) => {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-      },
-      error: (err: unknown) => this.handleHttpError(err),
-    });
+      })
+      .catch((err: unknown) => this.handleHttpError(err));
   }
 
   downloadPackingListPdf(orderId?: string): void {

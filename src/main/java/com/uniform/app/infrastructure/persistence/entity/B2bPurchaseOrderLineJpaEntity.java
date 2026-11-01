@@ -61,10 +61,10 @@ public class B2bPurchaseOrderLineJpaEntity {
     @Column(name = "color_reference_snapshot", length = 100, nullable = false, updatable = false)
     private String colorReferenceSnapshot;
 
-    @Column(name = "front_visual_storage_snapshot", length = 512, nullable = false, updatable = false)
+    @Column(name = "front_visual_storage_snapshot", columnDefinition = "LONGTEXT", updatable = false)
     private String frontVisualStorageSnapshot;
 
-    @Column(name = "back_visual_storage_snapshot", length = 512, updatable = false)
+    @Column(name = "back_visual_storage_snapshot", columnDefinition = "LONGTEXT", updatable = false)
     private String backVisualStorageSnapshot;
 
     public B2bPurchaseOrderLineJpaEntity() {

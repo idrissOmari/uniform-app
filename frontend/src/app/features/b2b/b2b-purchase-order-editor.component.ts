@@ -15,6 +15,7 @@ import {
   B2bPurchaseOrderResponse,
 } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
+import { isImageUrl } from '../../core/utils/image-upload.util';
 import {
   TableActionItem,
   TableActionMenuComponent,
@@ -23,7 +24,7 @@ import {
 @Component({
   selector: 'tr[app-b2b-po-line-row]',
   standalone: true,
-  imports: [DecimalPipe, TranslatePipe, TableActionMenuComponent],
+  imports: [TranslatePipe, TableActionMenuComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'border-b border-slate-200 hover:bg-slate-50',
@@ -39,11 +40,27 @@ import {
       {{ ('size.' + line().size) | t }}
       <span class="block text-xs font-normal text-slate-500">{{ ('gender.' + line().gender) | t }}</span>
     </td>
-    <td class="px-4 py-3 text-xs text-slate-600 font-mono">
-      <div>{{ line().frontVisualStorageSnapshot }}</div>
-      @if (line().backVisualStorageSnapshot; as backVisual) {
-        <div class="text-slate-400">{{ backVisual }}</div>
-      }
+    <td class="px-4 py-3 text-xs text-slate-600">
+      <div class="flex items-center gap-2">
+        @if (isImageUrl(line().frontVisualStorageSnapshot)) {
+          <img
+            [src]="line().frontVisualStorageSnapshot"
+            alt="Visuel Face"
+            class="h-10 w-10 rounded-lg border border-slate-200 bg-white object-contain p-0.5"
+          />
+        } @else if (line().frontVisualStorageSnapshot) {
+          <span class="font-mono text-[11px]">{{ line().frontVisualStorageSnapshot }}</span>
+        } @else {
+          <span class="text-slate-400">Standard</span>
+        }
+        @if (isImageUrl(line().backVisualStorageSnapshot)) {
+          <img
+            [src]="line().backVisualStorageSnapshot"
+            alt="Visuel Dos"
+            class="h-10 w-10 rounded-lg border border-slate-200 bg-white object-contain p-0.5"
+          />
+        }
+      </div>
     </td>
     <td class="px-4 py-3 text-sm font-semibold text-slate-700">
       {{ line().b2cDemandedQuantity }} u.
@@ -62,12 +79,6 @@ import {
         <span class="text-sm font-extrabold text-slate-900">{{ line().finalQuantity }} u.</span>
       }
     </td>
-    <td class="px-4 py-3 text-sm font-semibold text-slate-700">
-      {{ line().b2bUnitCost | number: '1.2-2' }} DH
-    </td>
-    <td class="px-4 py-3 text-sm font-extrabold text-[#163672]">
-      {{ previewLineTotalCost() | number: '1.2-2' }} DH
-    </td>
     <td class="px-4 py-3 text-right">
       <app-table-action-menu
         [menuTitle]="(line().itemNameSnapshot || line().garmentStyleSnapshot) + ' · ' + line().size"
@@ -82,15 +93,12 @@ export class B2bPoLineRowComponent {
   readonly currentDraftQuantity = model<number>(0);
   readonly finalQuantitySaved = output<number>();
   readonly poPdfRequested = output<void>();
+  readonly isImageUrl = isImageUrl;
 
   readonly editableFinalQuantity = linkedSignal<B2bPurchaseOrderLineResponse, number>({
     source: this.line,
     computation: (l) => l.finalQuantity,
   });
-
-  readonly previewLineTotalCost = computed<number>(
-    () => Math.round(this.editableFinalQuantity() * this.line().b2bUnitCost * 100) / 100
-  );
 
   readonly lineActions = computed<readonly TableActionItem[]>(() => {
     const items: TableActionItem[] = [];
@@ -142,7 +150,7 @@ export class B2bPoLineRowComponent {
 @Component({
   selector: 'app-b2b-purchase-order-editor',
   standalone: true,
-  imports: [DecimalPipe, B2bPoLineRowComponent, TranslatePipe],
+  imports: [B2bPoLineRowComponent, TranslatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="space-y-6">
@@ -271,8 +279,8 @@ export class B2bPoLineRowComponent {
                 </span>
               </div>
               <p class="mt-1.5 text-xs text-slate-500">
-                Coût d'achat fournisseur :
-                <strong class="text-sm text-[#163672]">{{ po.totalB2bCost | number: '1.2-2' }} DH HT</strong>
+                Total à fabriquer :
+                <strong class="text-sm text-[#163672]">{{ getTotalPoUnits(po) }} unité(s)</strong>
               </p>
             </div>
 
@@ -321,8 +329,6 @@ export class B2bPoLineRowComponent {
                   <th class="px-4 py-2.5">Photo / Visuel</th>
                   <th class="px-4 py-2.5">Besoin Client</th>
                   <th class="px-4 py-2.5">Qté à Fabriquer</th>
-                  <th class="px-4 py-2.5">Prix d'Achat HT</th>
-                  <th class="px-4 py-2.5">Total Ligne HT</th>
                   <th class="px-4 py-2.5 text-right">Actions</th>
                 </tr>
               </thead>
@@ -394,5 +400,9 @@ export class B2bPurchaseOrderEditorComponent {
 
   onSaveFinalQuantity(po: B2bPurchaseOrderResponse, lineId: string, finalQuantity: number): void {
     this.workflowStore.updateB2bLineFinalQuantity(po.id, lineId, finalQuantity);
+  }
+
+  getTotalPoUnits(po: B2bPurchaseOrderResponse): number {
+    return po.lines.reduce((acc, l) => acc + l.finalQuantity, 0);
   }
 }

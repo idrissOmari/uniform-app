@@ -174,11 +174,11 @@ export class UniformApiService {
       supplierId?: string | null;
       supplierName?: string;
       availableSizes?: string | null;
-      frontVisualStorageKey: string;
+      frontVisualStorageKey?: string | null;
       backVisualStorageKey?: string | null;
       visualPlacementNotes?: string | null;
       b2cUnitPrice: number;
-      b2bUnitCost: number;
+      b2bUnitCost?: number | null;
     }
   ): Observable<AdminCatalogItemResponse> {
     return this.http.post<AdminCatalogItemResponse>(
@@ -199,11 +199,11 @@ export class UniformApiService {
       supplierId?: string | null;
       supplierName?: string;
       availableSizes?: string | null;
-      frontVisualStorageKey: string;
+      frontVisualStorageKey?: string | null;
       backVisualStorageKey?: string | null;
       visualPlacementNotes?: string | null;
       b2cUnitPrice: number;
-      b2bUnitCost: number;
+      b2bUnitCost?: number | null;
     }
   ): Observable<AdminCatalogItemResponse> {
     return this.http.put<AdminCatalogItemResponse>(

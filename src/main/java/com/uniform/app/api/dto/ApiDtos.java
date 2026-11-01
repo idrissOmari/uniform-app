@@ -82,11 +82,11 @@ public final class ApiDtos {
             UUID supplierId,
             String supplierName,
             String availableSizes,
-            @NotBlank String frontVisualStorageKey,
+            String frontVisualStorageKey,
             String backVisualStorageKey,
             String visualPlacementNotes,
             @NotNull @DecimalMin("0.00") BigDecimal b2cUnitPrice,
-            @NotNull @DecimalMin("0.00") BigDecimal b2bUnitCost
+            @DecimalMin("0.00") BigDecimal b2bUnitCost
     ) {
     }
 

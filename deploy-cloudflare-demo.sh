@@ -17,4 +17,4 @@ if ! lsof -i :4200 >/dev/null 2>&1; then
 fi
 
 echo "🌐 Ouverture du tunnel HTTPS Cloudflare vers http://localhost:4200 ..."
-cloudflared tunnel --url http://localhost:4200
+cloudflared tunnel --protocol http2 --url http://localhost:4200 --no-autoupdate

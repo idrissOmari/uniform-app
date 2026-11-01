@@ -35,7 +35,7 @@ public class ClientJpaEntity {
     @Column(name = "address", columnDefinition = "TEXT", nullable = false)
     private String address;
 
-    @Column(name = "logo_storage_key", length = 512)
+    @Column(name = "logo_storage_key", columnDefinition = "LONGTEXT")
     private String logoStorageKey;
 
     @Column(name = "moq", nullable = false)

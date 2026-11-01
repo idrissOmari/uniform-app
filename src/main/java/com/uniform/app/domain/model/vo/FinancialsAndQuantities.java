@@ -117,13 +117,12 @@ public final class FinancialsAndQuantities {
             if (colorReference == null || colorReference.isBlank()) {
                 throw new DomainValidationException("colorReferenceSnapshot must not be blank.");
             }
-            if (frontVisualStorageKey == null || frontVisualStorageKey.isBlank()) {
-                throw new DomainValidationException("frontVisualStorageSnapshot must not be blank.");
-            }
             garmentStyle = garmentStyle.trim();
             itemName = (itemName == null || itemName.isBlank()) ? garmentStyle : itemName.trim();
             colorReference = colorReference.trim();
-            frontVisualStorageKey = frontVisualStorageKey.trim();
+            frontVisualStorageKey = (frontVisualStorageKey == null || frontVisualStorageKey.isBlank())
+                    ? null
+                    : frontVisualStorageKey.trim();
             backVisualStorageKey = (backVisualStorageKey == null || backVisualStorageKey.isBlank())
                     ? null
                     : backVisualStorageKey.trim();

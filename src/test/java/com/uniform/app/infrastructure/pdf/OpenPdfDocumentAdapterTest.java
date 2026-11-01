@@ -80,5 +80,41 @@ class OpenPdfDocumentAdapterTest {
 
         assertThat(poBytes).isNotEmpty();
         assertThat(new String(poBytes, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+
+        // Test CatalogItem without visual (optional photo) & without b2bUnitCost, and Catalog Flyer PDF with logo
+        String tinyPngDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+        Client clientWithLogo = Client.createNew(
+                client.name(),
+                client.address(),
+                tinyPngDataUrl,
+                client.moq(),
+                adminId,
+                now
+        );
+        CatalogItem itemWithoutPhoto = CatalogItem.createNew(
+                clientId,
+                "SWEAT-02",
+                "SWEATSHIRT",
+                "Sweat Officiel",
+                "Molleton 300g",
+                "Bleu Marine",
+                "Atelier UniformApp",
+                "AGE_6,AGE_8,AGE_10",
+                null,
+                null,
+                "Broderie cœur",
+                new BigDecimal("180.00"),
+                null,
+                adminId,
+                now
+        );
+
+        byte[] flyerBytes = pdfAdapter.generateClientCatalogFlyerPdf(
+                clientId,
+                clientWithLogo,
+                java.util.List.of(item, itemWithoutPhoto)
+        );
+        assertThat(flyerBytes).isNotEmpty();
+        assertThat(new String(flyerBytes, 0, 5, StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
     }
 }

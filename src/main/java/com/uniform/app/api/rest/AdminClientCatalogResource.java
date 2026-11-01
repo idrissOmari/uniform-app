@@ -38,6 +38,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -209,6 +210,7 @@ public class AdminClientCatalogResource {
         String resolvedStyle = (request.garmentStyle() != null && !request.garmentStyle().isBlank())
                 ? request.garmentStyle().trim()
                 : (request.productType() != null && !request.productType().isBlank() ? request.productType().trim() : request.name().trim());
+        BigDecimal resolvedB2bCost = request.b2bUnitCost() != null ? request.b2bUnitCost() : java.math.BigDecimal.ZERO;
         CatalogItem created = clientCatalogUseCase.createCatalogItem(
                 clientId,
                 new CreateCatalogItemCommand(
@@ -224,7 +226,7 @@ public class AdminClientCatalogResource {
                         request.backVisualStorageKey(),
                         request.visualPlacementNotes(),
                         request.b2cUnitPrice(),
-                        request.b2bUnitCost(),
+                        resolvedB2bCost,
                         adminUserId
                 )
         );
@@ -246,6 +248,7 @@ public class AdminClientCatalogResource {
         String resolvedStyle = (request.garmentStyle() != null && !request.garmentStyle().isBlank())
                 ? request.garmentStyle().trim()
                 : (request.productType() != null && !request.productType().isBlank() ? request.productType().trim() : request.name().trim());
+        BigDecimal resolvedB2bCost = request.b2bUnitCost() != null ? request.b2bUnitCost() : java.math.BigDecimal.ZERO;
         CatalogItem updated = clientCatalogUseCase.updateCatalogItem(
                 clientId,
                 catalogItemId,
@@ -262,7 +265,7 @@ public class AdminClientCatalogResource {
                         request.backVisualStorageKey(),
                         request.visualPlacementNotes(),
                         request.b2cUnitPrice(),
-                        request.b2bUnitCost(),
+                        resolvedB2bCost,
                         adminUserId
                 )
         );

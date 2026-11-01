@@ -28,6 +28,11 @@ import {
 } from '../../core/models/uniform.models';
 import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store';
 import {
+  compressImageFileToDataUrl,
+  getGarmentSvgDataUrl,
+  isImageUrl,
+} from '../../core/utils/image-upload.util';
+import {
   DataTablePaginationComponent,
   SortDirection,
   compareTableValues,
@@ -166,7 +171,29 @@ export interface EditableClientSectionRow {
               @for (client of paginatedClients(); track client.id) {
                 <tr class="border-b border-slate-200 transition hover:bg-slate-50">
                   <td class="px-5 py-4">
-                    <span class="text-sm font-bold text-slate-900">{{ client.name }}</span>
+                    <div class="flex items-center gap-3">
+                      @if (isImageUrl(client.logoStorageKey)) {
+                        <img
+                          [src]="client.logoStorageKey"
+                          [alt]="client.name"
+                          class="h-10 w-10 rounded-xl border border-slate-200 bg-white object-contain p-1 shadow-2xs shrink-0"
+                        />
+                      } @else {
+                        <div
+                          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-indigo-200/70 bg-indigo-50 text-xs font-extrabold text-indigo-800"
+                        >
+                          🏫
+                        </div>
+                      }
+                      <div>
+                        <span class="text-sm font-bold text-slate-900">{{ client.name }}</span>
+                        @if (isImageUrl(client.logoStorageKey)) {
+                          <span class="block text-[10px] font-semibold text-emerald-700">
+                            ✓ Logo officiel configuré
+                          </span>
+                        }
+                      </div>
+                    </div>
                   </td>
                   <td class="px-5 py-4">
                     <div class="flex flex-col items-start gap-1">
@@ -323,6 +350,59 @@ export interface EditableClientSectionRow {
                     {{ 'validation.required' | t }}
                   </p>
                 }
+              </div>
+
+              <!-- LOGO DE L'ÉCOLE / ÉTABLISSEMENT (OPTIONNEL) -->
+              <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                  <div class="flex items-center gap-3.5">
+                    @if (isImageUrl(clientForm.controls.logoStorageKey.value)) {
+                      <img
+                        [src]="clientForm.controls.logoStorageKey.value"
+                        alt="Aperçu du logo de l'établissement"
+                        class="h-16 w-16 rounded-2xl border border-amber-300 bg-white object-contain p-1.5 shadow-xs"
+                      />
+                    } @else {
+                      <div
+                        class="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-2xl text-slate-400"
+                      >
+                        🏫
+                      </div>
+                    }
+                    <div>
+                      <label class="block text-xs font-bold text-slate-800">
+                        Logo de l'école / établissement
+                        <span class="ml-1 font-normal text-slate-400">(optionnel)</span>
+                      </label>
+                      <p class="mt-0.5 text-[11px] text-slate-500">
+                        Affiché dans l'interface et en en-tête du PDF Catalogue officiel (PNG, JPG ou SVG).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <label
+                      class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-50"
+                    >
+                      <span>📷 Uploader un logo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        (change)="onClientLogoSelected($event)"
+                      />
+                    </label>
+                    @if (clientForm.controls.logoStorageKey.value) {
+                      <button
+                        type="button"
+                        class="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 cursor-pointer"
+                        (click)="clearClientLogo()"
+                      >
+                        Retirer
+                      </button>
+                    }
+                  </div>
+                </div>
               </div>
 
               <!-- DÉCOUPAGE PAR SECTIONS & CAPACITÉS À INITIER -->
@@ -616,6 +696,7 @@ export class AdminClientsListComponent {
   readonly draftSections = signal<readonly EditableClientSectionRow[]>([]);
   readonly sectionValidationError = signal<string | null>(null);
   readonly clientTypes = ALL_CLIENT_TYPES;
+  readonly isImageUrl = isImageUrl;
 
   // Filtres sur les en-têtes du tableau, tri & pagination
   readonly filterName = signal<string>('');
@@ -852,6 +933,30 @@ export class AdminClientsListComponent {
     return control.invalid && (control.touched || control.dirty || this.clientSubmitted());
   }
 
+  async onClientLogoSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      const dataUrl = await compressImageFileToDataUrl(file, 420, true);
+      this.clientForm.controls.logoStorageKey.setValue(dataUrl);
+      this.clientForm.controls.logoStorageKey.markAsDirty();
+    } catch {
+      // ignore invalid image
+    } finally {
+      if (input) {
+        input.value = '';
+      }
+    }
+  }
+
+  clearClientLogo(): void {
+    this.clientForm.controls.logoStorageKey.setValue('');
+    this.clientForm.controls.logoStorageKey.markAsDirty();
+  }
+
   openCreateClientModal(): void {
     this.editingClientId.set(null);
     this.clientSubmitted.set(false);
@@ -1026,18 +1131,34 @@ export class AdminClientsListComponent {
       @if (workflowStore.selectedClient(); as activeClient) {
         <!-- Bannière de la page Catalogue Produits -->
         <div class="ui-banner">
-          <div>
-            <div class="flex items-center gap-2.5">
-              <h2 class="text-lg font-bold text-white">
-                {{ activeClient.name }}
-              </h2>
+          <div class="flex items-center gap-3.5">
+            @if (isImageUrl(activeClient.logoStorageKey)) {
+              <img
+                [src]="activeClient.logoStorageKey"
+                [alt]="activeClient.name"
+                class="h-12 w-12 rounded-2xl border border-white/30 bg-white object-contain p-1 shadow-sm shrink-0"
+              />
+            }
+            <div>
+              <div class="flex items-center gap-2.5">
+                <h2 class="text-lg font-bold text-white">
+                  {{ activeClient.name }}
+                </h2>
+              </div>
+              <p class="mt-1 text-sm text-blue-100/90">
+                {{ activeClient.address }} — Catalogue des produits disponibles à la vente (DH / MAD) et tailles associées.
+              </p>
             </div>
-            <p class="mt-1 text-sm text-blue-100/90">
-              {{ activeClient.address }} — Catalogue des produits disponibles à la vente (DH / MAD) et tailles associées.
-            </p>
           </div>
 
           <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <button
+              type="button"
+              class="rounded-xl border border-white/30 bg-white/15 px-4 py-2 text-xs font-bold text-white backdrop-blur-xs transition hover:bg-white/25 cursor-pointer w-full sm:w-auto"
+              (click)="workflowStore.downloadCatalogFlyerPdf()"
+            >
+              🖨️ Imprimer Flyer Catalogue
+            </button>
             <button
               type="button"
               class="ui-btn-emerald w-full sm:w-auto"
@@ -1097,7 +1218,7 @@ export class AdminClientsListComponent {
                         class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium normal-case tracking-normal text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none"
                       />
                     </th>
-                    <th class="px-4 py-3 min-w-[160px]">Photos du Produit</th>
+                    <th class="px-4 py-3 min-w-[160px]">Aperçu & Visuels</th>
                     <th class="px-4 py-3 min-w-[130px]">
                       <div
                         class="flex items-center gap-1 cursor-pointer select-none hover:text-indigo-700"
@@ -1105,15 +1226,6 @@ export class AdminClientsListComponent {
                       >
                         <span>Prix Vente Client</span>
                         <span class="text-indigo-600">{{ getSortIndicator('b2cUnitPrice') }}</span>
-                      </div>
-                    </th>
-                    <th class="px-4 py-3 min-w-[130px]">
-                      <div
-                        class="flex items-center gap-1 cursor-pointer select-none hover:text-indigo-700"
-                        (click)="toggleColumnSort('b2bUnitCost')"
-                      >
-                        <span>Prix Achat Fournisseur</span>
-                        <span class="text-indigo-600">{{ getSortIndicator('b2bUnitCost') }}</span>
                       </div>
                     </th>
                     <th class="px-4 py-3 text-right min-w-[110px]">
@@ -1153,23 +1265,44 @@ export class AdminClientsListComponent {
                           Tailles : <span class="font-semibold text-slate-700">{{ formatAvailableSizes(item.availableSizes) }}</span>
                         </div>
                       </td>
-                      <td class="px-5 py-4 text-xs text-slate-600 space-y-0.5">
-                        <div>
-                          <span class="font-semibold text-slate-700">Photo 1 :</span>
-                          <code class="ml-1 font-mono text-[11px]">{{ item.frontVisualStorageKey }}</code>
-                        </div>
-                        @if (item.backVisualStorageKey) {
-                          <div>
-                            <span class="font-semibold text-slate-700">Photo 2 :</span>
-                            <code class="ml-1 font-mono text-[11px]">{{ item.backVisualStorageKey }}</code>
+                      <td class="px-5 py-4 text-xs text-slate-600">
+                        <div class="flex items-center gap-2.5">
+                          <img
+                            [src]="resolveCatalogPreviewUrl(item)"
+                            [alt]="item.name"
+                            class="h-12 w-12 rounded-xl border border-slate-200 bg-slate-50 object-contain p-1 shadow-2xs shrink-0"
+                          />
+                          @if (isImageUrl(item.backVisualStorageKey)) {
+                            <img
+                              [src]="item.backVisualStorageKey"
+                              alt="Visuel dos"
+                              class="h-12 w-12 rounded-xl border border-slate-200 bg-slate-50 object-contain p-1 shadow-2xs shrink-0"
+                            />
+                          }
+                          <div class="space-y-0.5">
+                            @if (isImageUrl(item.frontVisualStorageKey)) {
+                              <span class="inline-block rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                Photo Face{{ isImageUrl(item.backVisualStorageKey) ? ' + Dos' : '' }}
+                              </span>
+                            } @else if (item.frontVisualStorageKey) {
+                              <span class="block font-mono text-[11px] text-slate-600">
+                                {{ item.frontVisualStorageKey }}
+                              </span>
+                            } @else {
+                              <span class="inline-block rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                                Illustration auto
+                              </span>
+                            }
+                            @if (item.visualPlacementNotes) {
+                              <div class="text-[11px] text-slate-400 truncate max-w-[150px]">
+                                {{ item.visualPlacementNotes }}
+                              </div>
+                            }
                           </div>
-                        }
+                        </div>
                       </td>
                       <td class="px-5 py-4 text-sm font-extrabold text-[#15803d]">
                         {{ item.b2cUnitPrice | number: '1.2-2' }} DH
-                      </td>
-                      <td class="px-5 py-4 text-sm font-bold text-[#163672]">
-                        {{ item.b2bUnitCost | number: '1.2-2' }} DH
                       </td>
                       <td class="px-5 py-4 text-right">
                         <app-table-action-menu
@@ -1180,7 +1313,7 @@ export class AdminClientsListComponent {
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7" class="px-5 py-10 text-center text-sm text-slate-500">
+                      <td colspan="6" class="px-5 py-10 text-center text-sm text-slate-500">
                         {{ 'adminCatalog.emptyItems' | t }}
                       </td>
                     </tr>
@@ -1540,36 +1673,112 @@ export class AdminClientsListComponent {
                   </div>
                 </div>
 
+                <!-- UPLOAD PHOTOS / VISUELS DU PRODUIT (FACE & DOS — OPTIONNELS) -->
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700">
-                      {{ 'adminCatalog.frontVisualLabel' | t }} <span class="font-bold text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      formControlName="frontVisualStorageKey"
-                      placeholder="visuals/design-face.png"
-                      class="mt-1 w-full rounded-lg border px-3 py-2 text-xs font-mono"
-                      [class.border-rose-400]="isCatalogFieldInvalid('frontVisualStorageKey')"
-                      [class.border-slate-300]="!isCatalogFieldInvalid('frontVisualStorageKey')"
-                    />
-                    @if (isCatalogFieldInvalid('frontVisualStorageKey')) {
-                      <p class="mt-1 text-xs font-semibold text-rose-600">
-                        {{ 'validation.required' | t }}
-                      </p>
-                    }
+                  <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs font-bold text-slate-700">
+                        {{ 'adminCatalog.frontVisualLabel' | t }}
+                        <span class="ml-1 font-normal text-slate-400">(optionnel)</span>
+                      </label>
+                      @if (catalogForm.controls.frontVisualStorageKey.value) {
+                        <button
+                          type="button"
+                          class="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                          (click)="clearCatalogVisual('frontVisualStorageKey')"
+                        >
+                          Retirer
+                        </button>
+                      }
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      <img
+                        [src]="
+                          isImageUrl(catalogForm.controls.frontVisualStorageKey.value)
+                            ? catalogForm.controls.frontVisualStorageKey.value
+                            : getGarmentSvgDataUrl(
+                                catalogForm.controls.productType.value,
+                                catalogForm.controls.colorReference.value
+                              )
+                        "
+                        alt="Aperçu Face"
+                        class="h-16 w-16 rounded-xl border border-slate-200 bg-white object-contain p-1.5 shadow-2xs shrink-0"
+                      />
+                      <div class="flex-1 space-y-1.5">
+                        <label
+                          class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 shadow-2xs transition hover:bg-indigo-50"
+                        >
+                          <span>📷 Uploader photo Face</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            class="hidden"
+                            (change)="onCatalogVisualSelected($event, 'frontVisualStorageKey')"
+                          />
+                        </label>
+                        <p class="text-[10px] text-slate-500 leading-snug">
+                          @if (isImageUrl(catalogForm.controls.frontVisualStorageKey.value)) {
+                            ✓ Photo personnalisée chargée
+                          } @else {
+                            Illustration automatique utilisée si aucune photo n'est ajoutée.
+                          }
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label class="block text-xs font-semibold text-slate-700">
-                      {{ 'adminCatalog.backVisualLabel' | t }}
-                    </label>
-                    <input
-                      type="text"
-                      formControlName="backVisualStorageKey"
-                      placeholder="visuals/design-dos.png"
-                      class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs font-mono"
-                    />
+                  <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                      <label class="block text-xs font-bold text-slate-700">
+                        {{ 'adminCatalog.backVisualLabel' | t }}
+                      </label>
+                      @if (catalogForm.controls.backVisualStorageKey.value) {
+                        <button
+                          type="button"
+                          class="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                          (click)="clearCatalogVisual('backVisualStorageKey')"
+                        >
+                          Retirer
+                        </button>
+                      }
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                      @if (isImageUrl(catalogForm.controls.backVisualStorageKey.value)) {
+                        <img
+                          [src]="catalogForm.controls.backVisualStorageKey.value"
+                          alt="Aperçu Dos"
+                          class="h-16 w-16 rounded-xl border border-slate-200 bg-white object-contain p-1.5 shadow-2xs shrink-0"
+                        />
+                      } @else {
+                        <div
+                          class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white text-xs font-semibold text-slate-400"
+                        >
+                          Dos
+                        </div>
+                      }
+                      <div class="flex-1 space-y-1.5">
+                        <label
+                          class="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-100"
+                        >
+                          <span>📷 Uploader photo Dos</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            class="hidden"
+                            (change)="onCatalogVisualSelected($event, 'backVisualStorageKey')"
+                          />
+                        </label>
+                        <p class="text-[10px] text-slate-500 leading-snug">
+                          @if (isImageUrl(catalogForm.controls.backVisualStorageKey.value)) {
+                            ✓ Photo du dos chargée
+                          } @else {
+                            Optionnel (utile en cas de flocage ou broderie au dos).
+                          }
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1585,59 +1794,24 @@ export class AdminClientsListComponent {
                   />
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="block text-xs font-semibold text-emerald-800">
-                      {{ 'adminCatalog.b2cPriceLabel' | t }} <span class="font-bold text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      formControlName="b2cUnitPrice"
-                      (input)="previewB2cPrice.set(+$any($event.target).value || 0)"
-                      class="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-bold text-emerald-900"
-                      [class.border-rose-400]="isCatalogFieldInvalid('b2cUnitPrice')"
-                      [class.border-emerald-300]="!isCatalogFieldInvalid('b2cUnitPrice')"
-                    />
-                    @if (isCatalogFieldInvalid('b2cUnitPrice')) {
-                      <p class="mt-1 text-xs font-semibold text-rose-600">
-                        {{ 'validation.priceMin' | t }}
-                      </p>
-                    }
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-semibold text-indigo-800">
-                      {{ 'adminCatalog.b2bCostLabel' | t }} <span class="font-bold text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      formControlName="b2bUnitCost"
-                      (input)="previewB2bCost.set(+$any($event.target).value || 0)"
-                      class="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-bold text-indigo-900"
-                      [class.border-rose-400]="isCatalogFieldInvalid('b2bUnitCost')"
-                      [class.border-indigo-300]="!isCatalogFieldInvalid('b2bUnitCost')"
-                    />
-                    @if (isCatalogFieldInvalid('b2bUnitCost')) {
-                      <p class="mt-1 text-xs font-semibold text-rose-600">
-                        {{ 'validation.priceMin' | t }}
-                      </p>
-                    }
-                  </div>
-                </div>
-
-                <div class="flex items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2.5 text-xs border border-slate-200">
-                  <span class="font-semibold text-slate-600">{{ 'adminCatalog.unitMarginLabel' | t }}</span>
-                  <span
-                    class="font-bold"
-                    [class.text-emerald-700]="computedUnitMargin() >= 0"
-                    [class.text-rose-600]="computedUnitMargin() < 0"
-                  >
-                    {{ computedUnitMargin() | number: '1.2-2' }} MAD / unité
-                  </span>
+                <div>
+                  <label class="block text-xs font-semibold text-emerald-800">
+                    {{ 'adminCatalog.b2cPriceLabel' | t }} <span class="font-bold text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    formControlName="b2cUnitPrice"
+                    class="mt-1 w-full rounded-lg border px-3 py-2 text-sm font-bold text-emerald-900"
+                    [class.border-rose-400]="isCatalogFieldInvalid('b2cUnitPrice')"
+                    [class.border-emerald-300]="!isCatalogFieldInvalid('b2cUnitPrice')"
+                  />
+                  @if (isCatalogFieldInvalid('b2cUnitPrice')) {
+                    <p class="mt-1 text-xs font-semibold text-rose-600">
+                      {{ 'validation.priceMin' | t }}
+                    </p>
+                  }
                 </div>
 
                 <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
@@ -1720,6 +1894,8 @@ export class AdminCatalogListComponent {
   readonly workflowStore = inject(UniformWorkflowStore);
   readonly genders = ALL_GENDERS;
   readonly productTypes = ALL_PRODUCT_TYPES;
+  readonly isImageUrl = isImageUrl;
+  readonly getGarmentSvgDataUrl = getGarmentSvgDataUrl;
 
   readonly activeTab = signal<'CATALOG' | 'VARIANTS_STOCK'>('CATALOG');
   readonly showCatalogModal = signal<boolean>(false);
@@ -1896,15 +2072,10 @@ export class AdminCatalogListComponent {
     }),
     frontVisualStorageKey: new FormControl<string>('', {
       nonNullable: true,
-      validators: [Validators.required],
     }),
     backVisualStorageKey: new FormControl<string>('', { nonNullable: true }),
     visualPlacementNotes: new FormControl<string>('', { nonNullable: true }),
     b2cUnitPrice: new FormControl<number>(250, {
-      nonNullable: true,
-      validators: [Validators.required, Validators.min(0)],
-    }),
-    b2bUnitCost: new FormControl<number>(115, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0)],
     }),
@@ -1916,12 +2087,44 @@ export class AdminCatalogListComponent {
       | 'referenceCode'
       | 'name'
       | 'colorReference'
-      | 'frontVisualStorageKey'
       | 'b2cUnitPrice'
-      | 'b2bUnitCost'
   ): boolean {
     const control = this.catalogForm.controls[controlName];
     return control.invalid && (control.touched || control.dirty || this.catalogSubmitted());
+  }
+
+  resolveCatalogPreviewUrl(item: AdminCatalogItemResponse): string {
+    if (isImageUrl(item.frontVisualStorageKey)) {
+      return item.frontVisualStorageKey!;
+    }
+    return getGarmentSvgDataUrl(item.productType, item.colorReference);
+  }
+
+  async onCatalogVisualSelected(
+    event: Event,
+    field: 'frontVisualStorageKey' | 'backVisualStorageKey'
+  ): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) {
+      return;
+    }
+    try {
+      const dataUrl = await compressImageFileToDataUrl(file, 640, false);
+      this.catalogForm.controls[field].setValue(dataUrl);
+      this.catalogForm.controls[field].markAsDirty();
+    } catch {
+      // ignore invalid image
+    } finally {
+      if (input) {
+        input.value = '';
+      }
+    }
+  }
+
+  clearCatalogVisual(field: 'frontVisualStorageKey' | 'backVisualStorageKey'): void {
+    this.catalogForm.controls[field].setValue('');
+    this.catalogForm.controls[field].markAsDirty();
   }
 
   resolveProductTypeLabel(productType?: string | null): string {
@@ -1965,8 +2168,6 @@ export class AdminCatalogListComponent {
     this.workflowStore.refreshSuppliers();
     this.editingCatalogItemId.set(null);
     this.catalogSubmitted.set(false);
-    this.previewB2cPrice.set(250);
-    this.previewB2bCost.set(115);
     this.selectedProductSizes.set([...KIDS_SIZES]);
     const defaultSupplierId = this.workflowStore.suppliers()[0]?.id ?? '';
     this.catalogForm.reset({
@@ -1979,7 +2180,6 @@ export class AdminCatalogListComponent {
       backVisualStorageKey: '',
       visualPlacementNotes: '',
       b2cUnitPrice: 250,
-      b2bUnitCost: 115,
     });
     this.showCatalogModal.set(true);
   }
@@ -1988,8 +2188,6 @@ export class AdminCatalogListComponent {
     this.workflowStore.refreshSuppliers();
     this.editingCatalogItemId.set(item.id);
     this.catalogSubmitted.set(false);
-    this.previewB2cPrice.set(item.b2cUnitPrice);
-    this.previewB2bCost.set(item.b2bUnitCost);
     const parsedSizes = item.availableSizes
       ? (item.availableSizes
           .split(',')
@@ -2010,11 +2208,10 @@ export class AdminCatalogListComponent {
       referenceCode: item.referenceCode,
       name: item.name,
       colorReference: item.colorReference,
-      frontVisualStorageKey: item.frontVisualStorageKey,
+      frontVisualStorageKey: item.frontVisualStorageKey ?? '',
       backVisualStorageKey: item.backVisualStorageKey ?? '',
       visualPlacementNotes: item.visualPlacementNotes ?? '',
       b2cUnitPrice: item.b2cUnitPrice,
-      b2bUnitCost: item.b2bUnitCost,
     });
     this.showCatalogModal.set(true);
   }
@@ -2044,11 +2241,11 @@ export class AdminCatalogListComponent {
       name: raw.name,
       garmentStyle: this.resolveProductTypeLabel(raw.productType),
       colorReference: raw.colorReference,
-      frontVisualStorageKey: raw.frontVisualStorageKey,
+      frontVisualStorageKey: raw.frontVisualStorageKey || null,
       backVisualStorageKey: raw.backVisualStorageKey || null,
       visualPlacementNotes: raw.visualPlacementNotes || null,
       b2cUnitPrice: raw.b2cUnitPrice,
-      b2bUnitCost: raw.b2bUnitCost,
+      b2bUnitCost: 0,
     };
     const editId = this.editingCatalogItemId();
     if (editId) {

@@ -160,9 +160,6 @@ public final class CatalogItem {
         if (colorReference == null || colorReference.isBlank()) {
             throw new DomainValidationException("colorReference must not be blank.");
         }
-        if (frontVisualStorageKey == null || frontVisualStorageKey.isBlank()) {
-            throw new DomainValidationException("frontVisualStorageKey must not be blank.");
-        }
         if (createdByUserId == null) {
             throw new DomainValidationException("createdByUserId must not be null.");
         }
@@ -185,7 +182,9 @@ public final class CatalogItem {
         this.availableSizes = (availableSizes == null || availableSizes.isBlank())
                 ? null
                 : availableSizes.trim();
-        this.frontVisualStorageKey = frontVisualStorageKey.trim();
+        this.frontVisualStorageKey = (frontVisualStorageKey == null || frontVisualStorageKey.isBlank())
+                ? null
+                : frontVisualStorageKey.trim();
         this.backVisualStorageKey = (backVisualStorageKey == null || backVisualStorageKey.isBlank())
                 ? null
                 : backVisualStorageKey.trim();
@@ -193,7 +192,7 @@ public final class CatalogItem {
                 ? null
                 : visualPlacementNotes.trim();
         this.b2cUnitPrice = FinancialsAndQuantities.normalizeAmount(b2cUnitPrice);
-        this.b2bUnitCost = FinancialsAndQuantities.normalizeAmount(b2bUnitCost);
+        this.b2bUnitCost = FinancialsAndQuantities.normalizeAmount(b2bUnitCost != null ? b2bUnitCost : BigDecimal.ZERO);
         this.active = active;
         this.version = version;
         this.createdByUserId = createdByUserId;

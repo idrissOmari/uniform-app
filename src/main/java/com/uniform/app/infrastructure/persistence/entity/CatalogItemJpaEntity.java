@@ -44,10 +44,10 @@ public class CatalogItemJpaEntity {
     @Column(name = "available_sizes", length = 255)
     private String availableSizes;
 
-    @Column(name = "front_visual_storage_key", length = 512, nullable = false)
+    @Column(name = "front_visual_storage_key", columnDefinition = "LONGTEXT")
     private String frontVisualStorageKey;
 
-    @Column(name = "back_visual_storage_key", length = 512)
+    @Column(name = "back_visual_storage_key", columnDefinition = "LONGTEXT")
     private String backVisualStorageKey;
 
     @Column(name = "visual_placement_notes", columnDefinition = "TEXT")

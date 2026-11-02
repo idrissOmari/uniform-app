@@ -162,7 +162,7 @@ export class B2bPoLineRowComponent {
             Préparation de la Commande & Bons de Commande par Fournisseur
           </h2>
           <p class="mt-1 text-sm text-blue-100/90">
-            Téléchargez le Bon de Commande PDF de chaque fournisseur, gérez les arrivages au fur et à mesure pour alimenter le stock, puis imprimez le PDF de reconstitution par client final.
+            Téléchargez le Bon de Commande PDF de chaque fournisseur et gérez les arrivages au fur et à mesure pour alimenter le stock.
           </p>
         </div>
 
@@ -175,16 +175,6 @@ export class B2bPoLineRowComponent {
                 (click)="workflowStore.moveActiveB2cOrderToProduction()"
               >
                 🚀 Lancer la commande en fabrication
-              </button>
-            }
-
-            @if (activeOrder.lines.length > 0) {
-              <button
-                type="button"
-                class="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/20 cursor-pointer"
-                (click)="workflowStore.downloadPackingListPdf(activeOrder.id)"
-              >
-                📋 Imprimer PDF Reconstitution par Client Final
               </button>
             }
 
@@ -238,17 +228,8 @@ export class B2bPoLineRowComponent {
           @if (allPosReceived()) {
             <div class="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-[#dcfce7]/50 px-4 py-3">
               <span class="text-xs font-bold text-[#15803d]">
-                ✓ Tous les fournisseurs ont livré ! Le stock est alimenté et la commande est 100% complète. Imprimez le PDF de reconstitution pour préparer les colis par client final.
+                ✓ Tous les fournisseurs ont livré ! Le stock est alimenté et la commande est 100% complète pour la distribution aux clients.
               </span>
-              @if (workflowStore.activeB2cOrder(); as activeOrder) {
-                <button
-                  type="button"
-                  class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-[#146c32] cursor-pointer"
-                  (click)="workflowStore.downloadPackingListPdf(activeOrder.id)"
-                >
-                  📋 Imprimer PDF Reconstitution par Client
-                </button>
-              }
             </div>
           }
         </div>

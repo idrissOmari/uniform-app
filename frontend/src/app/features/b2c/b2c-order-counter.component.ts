@@ -478,16 +478,6 @@ export class B2cLinePickupRowComponent {
             </div>
 
             <div class="flex flex-wrap items-center gap-2.5">
-              @if (order.lines.length > 0) {
-                <button
-                  type="button"
-                  class="rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/20 cursor-pointer"
-                  (click)="workflowStore.downloadPackingListPdf(order.id)"
-                >
-                  📋 PDF Reconstitution par Client
-                </button>
-              }
-
               @if (order.status === 'IN_PROGRESS') {
                 <button
                   type="button"

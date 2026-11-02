@@ -356,8 +356,8 @@ import { isImageUrl } from './core/utils/image-upload.util';
             </div>
           </header>
 
-          <!-- Contenu de la page (avec marge basse sur mobile pour la barre d'onglets inférieure) -->
-          <main class="mx-auto w-full max-w-[1400px] flex-1 space-y-4 sm:space-y-6 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-10">
+          <!-- Contenu de la page -->
+          <main class="mx-auto w-full max-w-[1400px] flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 lg:p-8 lg:pb-10">
             <!-- ESPACE DE PILOTAGE PAR ÉTABLISSEMENT (affiché uniquement si un établissement est disponible et sélectionné) -->
             @if (authStore.isAdmin() && isEstablishmentWorkspaceRoute() && workflowStore.selectedClient(); as activeClient) {
               <div class="rounded-2xl border border-indigo-100/90 bg-white p-4 sm:p-5 shadow-[0_4px_24px_-4px_rgba(79,70,229,0.08)] space-y-3.5 sm:space-y-4">
@@ -538,91 +538,6 @@ import { isImageUrl } from './core/utils/image-upload.util';
 
             <router-outlet />
           </main>
-
-          <!-- ============================================================= -->
-          <!-- BARRE DE NAVIGATION INFÉRIEURE MOBILE/TABLETTE (< lg)         -->
-          <!-- ============================================================= -->
-          <nav
-            class="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-slate-200/90 bg-white/95 px-1.5 py-1.5 backdrop-blur-xl shadow-[0_-4px_20px_rgba(15,23,42,0.06)] lg:hidden"
-          >
-            @if (authStore.isAdmin()) {
-              <a
-                routerLink="/admin/dashboard"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold transition"
-                [class.text-indigo-600]="isEstablishmentWorkspaceRoute()"
-                [class.bg-indigo-50/90]="isEstablishmentWorkspaceRoute()"
-                [class.text-slate-500]="!isEstablishmentWorkspaceRoute()"
-              >
-                <span class="text-base leading-none">📊</span>
-                <span class="truncate">Tableau</span>
-              </a>
-
-              <a
-                routerLink="/admin/stocks"
-                routerLinkActive="text-indigo-600 bg-indigo-50/90"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold text-slate-500 transition"
-              >
-                <span class="text-base leading-none">📦</span>
-                <span class="truncate">Stock</span>
-              </a>
-
-              <a
-                routerLink="/admin/clients"
-                routerLinkActive="text-indigo-600 bg-indigo-50/90"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold text-slate-500 transition"
-              >
-                <span class="text-base leading-none">🏫</span>
-                <span class="truncate">Établiss.</span>
-              </a>
-
-              <a
-                routerLink="/admin/suppliers"
-                routerLinkActive="text-indigo-600 bg-indigo-50/90"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold text-slate-500 transition"
-              >
-                <span class="text-base leading-none">🏭</span>
-                <span class="truncate">Fourniss.</span>
-              </a>
-
-              <a
-                routerLink="/admin/users"
-                routerLinkActive="text-indigo-600 bg-indigo-50/90"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[10px] font-bold text-slate-500 transition"
-              >
-                <span class="text-base leading-none">👥</span>
-                <span class="truncate">Utilisateurs</span>
-              </a>
-            } @else {
-              <button
-                type="button"
-                (click)="workflowStore.navigateToB2cSubView('DASHBOARD')"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] font-bold text-indigo-600 bg-indigo-50/90 cursor-pointer"
-              >
-                <span class="text-base leading-none">🛍️</span>
-                <span>Commandes</span>
-              </button>
-
-              @if (!workflowStore.activeB2cOrder() || workflowStore.activeB2cOrder()?.status === 'IN_PROGRESS') {
-                <button
-                  type="button"
-                  (click)="workflowStore.openNewOrderModalFromNav()"
-                  class="mx-2 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 py-2.5 px-3 text-xs font-extrabold text-white shadow-sm cursor-pointer"
-                >
-                  <span>+</span>
-                  <span>Saisir commande</span>
-                </button>
-              }
-
-              <button
-                type="button"
-                (click)="workflowStore.downloadCatalogFlyerPdf()"
-                class="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-[11px] font-bold text-slate-600 cursor-pointer"
-              >
-                <span class="text-base leading-none">🖨️</span>
-                <span>Flyer PDF</span>
-              </button>
-            }
-          </nav>
         </div>
       </div>
     } @else {

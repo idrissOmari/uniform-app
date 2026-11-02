@@ -31,7 +31,7 @@ import { getGarmentSvgDataUrl, isImageUrl } from '../../core/utils/image-upload.
                 Commandes de l'établissement
               </h3>
               <p class="mt-1 text-xs text-slate-500 leading-relaxed">
-                Saisir des commandes élèves, suivre l'avancement par section, lancer la fabrication ou distribuer les tenues.
+                Consulter les commandes par client, exporter le récapitulatif global Excel (.xlsx), suivre l'avancement par section ou lancer la fabrication.
               </p>
               @if (workflowStore.activeB2cOrder(); as activeOrder) {
                 <div class="mt-3 rounded-xl border border-indigo-100/80 bg-indigo-50/40 px-3 py-2 text-xs">
@@ -45,13 +45,22 @@ import { getGarmentSvgDataUrl, isImageUrl } from '../../core/utils/image-upload.
                 </div>
               }
             </div>
-            <button
-              type="button"
-              (click)="openOrders()"
-              class="ui-btn-primary mt-4 w-full !text-xs"
-            >
-              Voir les commandes →
-            </button>
+            <div class="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                (click)="openOrders()"
+                class="ui-btn-primary w-full !text-xs"
+              >
+                Voir les commandes →
+              </button>
+              <button
+                type="button"
+                (click)="workflowStore.downloadClientOrdersExcel()"
+                class="w-full rounded-xl border border-emerald-200/80 bg-emerald-50/60 px-4 py-2 text-xs font-bold text-[#15803d] transition hover:bg-emerald-100/80 cursor-pointer"
+              >
+                📊 Récapitulatif Excel (.xlsx)
+              </button>
+            </div>
           </div>
 
           <!-- 2. Catalogue Produits & Flyer -->

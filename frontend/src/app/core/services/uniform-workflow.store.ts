@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { concatMap, from } from 'rxjs';
+import { concatMap, forkJoin, from, of } from 'rxjs';
 import { AuthStore } from '../auth/auth.store';
 import {
   AddB2cOrderLineRequest,
@@ -32,6 +32,7 @@ import {
   UpsertClientStockRequest,
   UserAccountResponse,
 } from '../models/uniform.models';
+import { B2cExcelExportService } from './b2c-excel-export.service';
 import { B2cReceiptPdfGeneratorService } from './b2c-receipt-pdf.service';
 import { CatalogFlyerPdfGeneratorService } from './catalog-flyer-pdf.service';
 import { UniformApiService } from './uniform-api.service';
@@ -43,6 +44,7 @@ export class UniformWorkflowStore {
   private readonly api = inject(UniformApiService);
   private readonly catalogFlyerPdfGenerator = inject(CatalogFlyerPdfGeneratorService);
   private readonly b2cReceiptPdfGenerator = inject(B2cReceiptPdfGeneratorService);
+  private readonly b2cExcelExport = inject(B2cExcelExportService);
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
 
@@ -1093,6 +1095,100 @@ export class UniformWorkflowStore {
         window.open(url, '_blank');
       })
       .catch((err: unknown) => this.handleHttpError(err));
+  }
+
+  downloadClientOrdersExcel(): void {
+    const client = this.selectedClient();
+    if (!client) {
+      return;
+    }
+    this.clearProblem();
+    this._loading.set(true);
+
+    const summaries = this._b2cOrders();
+    const detailRequests =
+      summaries.length > 0
+        ? forkJoin(summaries.map((s) => this.api.getB2cOrderById(client.id, s.id)))
+        : of(this._activeB2cOrder() ? [this._activeB2cOrder()!] : []);
+
+    detailRequests.subscribe({
+      next: (detailedOrders) => {
+        this._loading.set(false);
+        const items =
+          this._adminCatalogItems().length > 0 ? this._adminCatalogItems() : this._catalogItems();
+        const blob = this.b2cExcelExport.generateEstablishmentOrdersExcelBlob(
+          client,
+          detailedOrders,
+          items,
+          this._stocks()
+        );
+        const safeSlug = client.name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '');
+        const dateTag = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recapitulatif-commandes-${safeSlug || 'etablissement'}-${dateTag}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      },
+      error: (err: unknown) => {
+        this._loading.set(false);
+        this.handleHttpError(err);
+      },
+    });
+  }
+
+  deliverBuyerPackage(lines: readonly B2cOrderLineResponse[], onCompleted?: () => void): void {
+    const clientId = this._selectedClientId();
+    const order = this._activeB2cOrder();
+    if (!clientId || !order) {
+      return;
+    }
+    const pendingLines = lines.filter((l) => l.lineStatus === 'PENDING_PICKUP');
+    if (pendingLines.length === 0) {
+      onCompleted?.();
+      return;
+    }
+    this.clearProblem();
+    this._loading.set(true);
+    let lastUpdatedOrder: B2cOrderDetailResponse | null = null;
+    from(pendingLines)
+      .pipe(concatMap((line) => this.api.markB2cOrderLineDelivered(clientId, order.id, line.id)))
+      .subscribe({
+        next: (updated) => {
+          lastUpdatedOrder = updated;
+        },
+        complete: () => {
+          this._loading.set(false);
+          if (lastUpdatedOrder) {
+            this._activeB2cOrder.set(lastUpdatedOrder);
+          } else {
+            this.loadB2cOrderDetail(clientId, order.id);
+          }
+          this.api.listB2cOrders(clientId).subscribe({
+            next: (orders) => this._b2cOrders.set(orders),
+          });
+          if (this.authStore.isAdmin()) {
+            this.refreshClientStocks();
+          }
+          onCompleted?.();
+        },
+        error: (err: unknown) => {
+          this._loading.set(false);
+          this.loadB2cOrderDetail(clientId, order.id);
+          this.api.listB2cOrders(clientId).subscribe({
+            next: (orders) => this._b2cOrders.set(orders),
+          });
+          this.handleHttpError(err);
+        },
+      });
   }
 
   downloadPackingListPdf(orderId?: string): void {

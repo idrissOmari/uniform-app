@@ -167,7 +167,6 @@ export class B2cLinePickupRowComponent {
     ReactiveFormsModule,
     DecimalPipe,
     DatePipe,
-    B2cLinePickupRowComponent,
     TranslatePipe,
     TableActionMenuComponent,
   ],
@@ -478,7 +477,7 @@ export class B2cLinePickupRowComponent {
             </div>
 
             <div class="flex flex-wrap items-center gap-2.5">
-              @if (order.status === 'IN_PROGRESS') {
+              @if (!authStore.isAdmin() && order.status === 'IN_PROGRESS') {
                 <button
                   type="button"
                   class="ui-btn-emerald w-full sm:w-auto"
@@ -489,6 +488,14 @@ export class B2cLinePickupRowComponent {
               }
 
               @if (authStore.isAdmin()) {
+                <button
+                  type="button"
+                  class="ui-btn-emerald w-full sm:w-auto"
+                  (click)="workflowStore.downloadClientOrdersExcel()"
+                >
+                  📊 Télécharger Récapitulatif Excel (.xlsx)
+                </button>
+
                 @if (order.status === 'IN_PROGRESS') {
                   <button
                     type="button"
@@ -598,13 +605,13 @@ export class B2cLinePickupRowComponent {
             </div>
           }
 
-          <!-- CARTE TABLEAU COMMANDE GLOBALE (LIGNES & RECONSTITUTION PAR CLIENT FINAL) -->
+          <!-- CARTE TABLEAU COMMANDE GLOBALE (VUE UNIQUE PAR CLIENT FINAL) -->
           @defer {
             <div class="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
               <div class="flex flex-wrap items-center justify-between gap-4 pb-5">
                 <div class="flex flex-wrap items-center gap-3">
                   <h3 class="text-base font-bold text-slate-900">
-                    Contenu de la Commande Globale
+                    Commandes par Client ({{ buyerPackages().length }})
                   </h3>
 
                   @if (workflowStore.b2cOrders().length >= 1) {
@@ -623,30 +630,15 @@ export class B2cLinePickupRowComponent {
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
-                  <div class="inline-flex rounded-xl border border-slate-200 bg-slate-100/80 p-1">
+                  @if (authStore.isAdmin()) {
                     <button
                       type="button"
-                      class="rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer"
-                      [class.bg-indigo-600]="!groupByBuyerView()"
-                      [class.text-white]="!groupByBuyerView()"
-                      [class.shadow-xs]="!groupByBuyerView()"
-                      [class.text-slate-600]="groupByBuyerView()"
-                      (click)="groupByBuyerView.set(false)"
+                      class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2 text-xs font-bold text-[#15803d] shadow-2xs transition hover:bg-emerald-100 cursor-pointer"
+                      (click)="workflowStore.downloadClientOrdersExcel()"
                     >
-                      Lignes détaillées ({{ order.lines.length }})
+                      📊 Exporter Récapitulatif Excel (.xlsx)
                     </button>
-                    <button
-                      type="button"
-                      class="rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer"
-                      [class.bg-indigo-600]="groupByBuyerView()"
-                      [class.text-white]="groupByBuyerView()"
-                      [class.shadow-xs]="groupByBuyerView()"
-                      [class.text-slate-600]="!groupByBuyerView()"
-                      (click)="groupByBuyerView.set(true)"
-                    >
-                      Reconstitution par client ({{ buyerPackages().length }})
-                    </button>
-                  </div>
+                  }
 
                   @if (order.status !== 'IN_PROGRESS') {
                     <button
@@ -660,90 +652,108 @@ export class B2cLinePickupRowComponent {
                 </div>
               </div>
 
-              @if (groupByBuyerView()) {
-                <!-- VUE RECONSTITUTION PAR CLIENT FINAL (Ex: Client A : 3 Polo M, 1 Chemise M) -->
-                <div class="space-y-3">
-                  @for (pkg of buyerPackages(); track pkg.buyerKey) {
-                    <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4">
-                      <div>
-                        <div class="flex flex-wrap items-center gap-2">
-                          <span class="text-sm font-bold text-slate-900">{{ pkg.buyerFullName }}</span>
-                          <span class="text-xs text-slate-500">({{ pkg.buyerPhone }})</span>
-                          @if (pkg.sectionName) {
-                            <span class="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-[#163672]">
-                              Section : {{ pkg.sectionName }}
+              <!-- VUE UNIQUE PAR CLIENT FINAL -->
+              <div class="space-y-3">
+                @for (pkg of buyerPackages(); track pkg.buyerKey) {
+                  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4 transition hover:border-indigo-200 hover:bg-slate-50">
+                    <div class="space-y-2 min-w-0">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-md bg-slate-200/80 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700">
+                          {{ pkg.receiptNumberLabel }}
+                        </span>
+                        <span class="text-sm font-extrabold text-slate-900">{{ pkg.buyerFullName }}</span>
+                        @if (pkg.buyerPhone) {
+                          <span class="text-xs font-medium text-slate-500">· 📞 {{ pkg.buyerPhone }}</span>
+                        }
+                        @if (pkg.sectionName) {
+                          <span class="rounded-md bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-[#163672]">
+                            Section : {{ pkg.sectionName }}
+                          </span>
+                        }
+                      </div>
+
+                      <!-- Liste des articles commandés par ce client -->
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        @for (line of pkg.lines; track line.id) {
+                          <span
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold"
+                            [class.border-emerald-200]="line.lineStatus === 'DELIVERED'"
+                            [class.bg-emerald-50/70]="line.lineStatus === 'DELIVERED'"
+                            [class.text-emerald-900]="line.lineStatus === 'DELIVERED'"
+                            [class.border-indigo-100]="line.lineStatus !== 'DELIVERED'"
+                            [class.bg-white]="line.lineStatus !== 'DELIVERED'"
+                            [class.text-[#163672]]="line.lineStatus !== 'DELIVERED'"
+                          >
+                            <span class="font-extrabold">{{ line.quantity }}×</span>
+                            <span>{{ resolveCatalogItemName(line.catalogItemId) }}</span>
+                            <span class="text-slate-500">
+                              ({{ ('gender.' + line.gender) | t }} · {{ ('size.' + line.size) | t }})
                             </span>
-                          }
+                            @if (line.lineStatus === 'DELIVERED') {
+                              <span class="text-emerald-600 font-bold" title="Article remis">✓</span>
+                            }
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between lg:justify-end gap-3 shrink-0 border-t border-slate-200/60 pt-3 lg:border-t-0 lg:pt-0">
+                      <div class="text-left lg:text-right">
+                        <div class="text-sm font-extrabold text-slate-900">
+                          {{ pkg.totalCashAmount | number: '1.0-2' }} DH
                         </div>
-                        <div class="mt-1.5 text-sm font-semibold text-[#163672]">
-                          {{ pkg.summaryText }}
+                        <div class="text-[11px] font-semibold text-slate-500">
+                          {{ pkg.totalQuantity }} article(s) payé(s)
                         </div>
                       </div>
 
-                      <div class="flex flex-wrap items-center gap-3">
-                        <span class="text-xs font-bold text-slate-600">
-                          {{ pkg.totalQuantity }} art. · {{ pkg.totalCashAmount | number: '1.0-2' }} DH
-                        </span>
-                        <span
-                          class="rounded-full px-3 py-1 text-xs font-bold"
-                          [class.bg-[#dcfce7]]="pkg.allDelivered"
-                          [class.text-[#15803d]]="pkg.allDelivered"
-                          [class.bg-[#fef3c7]]="!pkg.allDelivered"
-                          [class.text-[#92400e]]="!pkg.allDelivered"
-                        >
-                          {{ pkg.allDelivered ? 'Colis remis' : 'À distribuer' }}
-                        </span>
+                      <span
+                        class="rounded-full px-3 py-1 text-xs font-bold"
+                        [class.bg-[#dcfce7]]="pkg.allDelivered"
+                        [class.text-[#15803d]]="pkg.allDelivered"
+                        [class.bg-[#fef3c7]]="!pkg.allDelivered"
+                        [class.text-[#92400e]]="!pkg.allDelivered"
+                      >
+                        {{ pkg.allDelivered ? 'Colis remis' : 'À distribuer' }}
+                      </span>
+
+                      <div class="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-[#163672] shadow-2xs transition hover:bg-indigo-50 cursor-pointer"
+                          title="Imprimer le justificatif d'achat officiel du client (PDF)"
                           (click)="workflowStore.downloadBuyerPackageReceiptPdf(pkg.lines)"
                         >
-                          🖨️ Justificatif d'achat (PDF)
+                          🖨️ Justificatif PDF
                         </button>
+
+                        <button
+                          type="button"
+                          class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:bg-slate-100 cursor-pointer"
+                          title="Afficher le détail complet de la commande du client"
+                          (click)="selectedLineDetail.set(pkg.lines[0])"
+                        >
+                          🔍 Détail
+                        </button>
+
+                        @if (order.status === 'IN_DELIVERY' && !pkg.allDelivered) {
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-xl bg-[#16803c] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#146c32] cursor-pointer"
+                            (click)="workflowStore.deliverBuyerPackage(pkg.lines)"
+                          >
+                            ✅ Remettre au client
+                          </button>
+                        }
                       </div>
                     </div>
-                  } @empty {
-                    <div class="py-10 text-center text-sm text-slate-400">
-                      Aucun client inclus dans cette commande globale.
-                    </div>
-                  }
-                </div>
-              } @else {
-                <div class="overflow-x-auto">
-                  <table class="w-full text-left border-collapse">
-                    <thead>
-                      <tr class="border-b border-slate-200/80 bg-[#f8fafc] text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                        <th class="px-4 py-3.5">Reçu N°</th>
-                        <th class="px-4 py-3.5">Client Final & Section</th>
-                        <th class="px-4 py-3.5">Produit · Taille · Quantité</th>
-                        <th class="px-4 py-3.5">Montant Payé</th>
-                        <th class="px-4 py-3.5">Distribution</th>
-                        <th class="px-4 py-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (line of order.lines; track line.id) {
-                        <tr
-                          app-b2c-line-pickup-row
-                          [line]="line"
-                          [itemName]="resolveCatalogItemName(line.catalogItemId)"
-                          [parentOrderInDelivery]="order.status === 'IN_DELIVERY'"
-                          (detailRequested)="selectedLineDetail.set($event)"
-                          (receiptDownloadRequested)="workflowStore.downloadLineReceiptPdf($event)"
-                          (buyerReceiptDownloadRequested)="workflowStore.downloadBuyerReceiptForLine($event)"
-                          (deliveryConfirmed)="workflowStore.deliverB2cLine($event)"
-                        ></tr>
-                      } @empty {
-                        <tr>
-                          <td colspan="6" class="px-4 py-12 text-center text-sm text-slate-400">
-                            {{ 'b2c.emptyLines' | t }}
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
+                  </div>
+                } @empty {
+                  <div class="py-10 text-center text-sm text-slate-400">
+                    {{ 'b2c.emptyLines' | t }}
+                  </div>
+                }
+              </div>
             </div>
           }
         } @else {
@@ -761,18 +771,21 @@ export class B2cLinePickupRowComponent {
       }
 
       <!-- =================================================================== -->
-      <!-- POPIN (Modale) "Afficher détail" d'une commande parent               -->
+      <!-- POPIN (Modale) "Afficher détail" de la commande d'un client          -->
       <!-- =================================================================== -->
       @if (selectedLineDetail(); as detailLine) {
+        @let buyerLines = getBuyerLinesForDetail(detailLine);
+        @let buyerTotalCash = getBuyerTotalCash(buyerLines);
+        @let buyerAllDelivered = areAllBuyerLinesDelivered(buyerLines);
         <div class="ui-modal-backdrop">
-          <div class="ui-modal-panel max-w-lg">
+          <div class="ui-modal-panel max-w-xl">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 class="text-base font-bold text-slate-900">
-                  Détail de la commande {{ detailLine.receiptNumber }}
+                  Détail de la commande — {{ detailLine.buyerFullName }}
                 </h3>
                 <p class="text-xs text-slate-500">
-                  Lot école : {{ workflowStore.activeB2cOrder()?.orderNumber }}
+                  Lot école : {{ workflowStore.activeB2cOrder()?.orderNumber }} · {{ buyerLines.length }} article(s)
                 </p>
               </div>
               <button
@@ -791,62 +804,75 @@ export class B2cLinePickupRowComponent {
                   <div class="mt-0.5 font-bold text-slate-900">{{ detailLine.buyerFullName }}</div>
                 </div>
                 <div>
-                  <div class="text-xs text-slate-400">Téléphone (Maroc)</div>
-                  <div class="mt-0.5 font-semibold text-slate-800">{{ detailLine.buyerPhone }}</div>
+                  <div class="text-xs text-slate-400">Section / Classe</div>
+                  <div class="mt-0.5">
+                    <span class="rounded-md bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-[#163672]">
+                      {{ detailLine.sectionName || 'Non renseignée' }}
+                    </span>
+                  </div>
                 </div>
-                <div class="col-span-2">
+                <div>
+                  <div class="text-xs text-slate-400">Téléphone</div>
+                  <div class="mt-0.5 font-semibold text-slate-800">{{ detailLine.buyerPhone || '—' }}</div>
+                </div>
+                <div>
                   <div class="text-xs text-slate-400">Email</div>
-                  <div class="mt-0.5 text-slate-700">{{ detailLine.buyerEmail }}</div>
+                  <div class="mt-0.5 text-slate-700">{{ detailLine.buyerEmail || '—' }}</div>
                 </div>
               </div>
 
-              <div class="rounded-xl border border-slate-200/80 p-4 space-y-2">
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-slate-400">Section / Classe</span>
-                  <span class="rounded-md bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-[#163672]">
-                    {{ detailLine.sectionName || 'Non renseignée' }}
-                  </span>
+              <div class="rounded-xl border border-slate-200/80 p-4 space-y-3">
+                <div class="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Articles commandés par ce client ({{ buyerLines.length }})
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-slate-400">Article commandé</span>
-                  <span class="font-bold text-slate-900">{{ resolveCatalogItemName(detailLine.catalogItemId) }}</span>
+
+                <div class="divide-y divide-slate-100">
+                  @for (line of buyerLines; track line.id) {
+                    <div class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                      <div>
+                        <div class="font-bold text-slate-900">
+                          {{ line.quantity }}× {{ resolveCatalogItemName(line.catalogItemId) }}
+                        </div>
+                        <div class="text-xs text-slate-500">
+                          {{ ('gender.' + line.gender) | t }} — Taille {{ ('size.' + line.size) | t }} · Reçu {{ line.receiptNumber }}
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2.5">
+                        <span class="font-bold text-slate-900">
+                          {{ line.lineCashAmount | number: '1.2-2' }} DH
+                        </span>
+                        <span
+                          class="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                          [class.bg-[#fef3c7]]="line.lineStatus === 'PENDING_PICKUP'"
+                          [class.text-[#92400e]]="line.lineStatus === 'PENDING_PICKUP'"
+                          [class.bg-[#dcfce7]]="line.lineStatus === 'DELIVERED'"
+                          [class.text-[#15803d]]="line.lineStatus === 'DELIVERED'"
+                        >
+                          {{ line.lineStatus === 'DELIVERED' ? 'Remis' : 'À remettre' }}
+                        </span>
+                      </div>
+                    </div>
+                  }
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-slate-400">Coupe & Taille</span>
-                  <span class="font-semibold text-slate-800">
-                    {{ ('gender.' + detailLine.gender) | t }} — {{ ('size.' + detailLine.size) | t }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-slate-400">Quantité commandée</span>
-                  <span class="font-bold text-slate-900">{{ detailLine.quantity }} unité(s)</span>
-                </div>
-                @if (authStore.isAdmin()) {
-                  <div class="flex items-center justify-between">
-                    <span class="text-xs font-medium text-slate-400">Stock disponible (cette taille)</span>
-                    <span class="rounded-md bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
-                      {{ workflowStore.getAvailableStock(detailLine.catalogItemId, detailLine.gender, detailLine.size) }} unité(s) en stock
-                    </span>
-                  </div>
-                }
-                <div class="flex items-center justify-between border-t border-slate-100 pt-2">
+
+                <div class="flex items-center justify-between border-t border-slate-100 pt-3">
                   <span class="text-xs font-bold uppercase text-slate-500">Total payé en espèces</span>
                   <span class="text-base font-extrabold text-[#15803d]">
-                    {{ detailLine.lineCashAmount | number: '1.2-2' }} DH
+                    {{ buyerTotalCash | number: '1.2-2' }} DH
                   </span>
                 </div>
               </div>
 
               <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                <span class="text-xs font-semibold text-slate-600">Statut de distribution :</span>
+                <span class="text-xs font-semibold text-slate-600">Statut global du colis client :</span>
                 <span
                   class="rounded-full px-3 py-1 text-xs font-bold"
-                  [class.bg-[#fef3c7]]="detailLine.lineStatus === 'PENDING_PICKUP'"
-                  [class.text-[#92400e]]="detailLine.lineStatus === 'PENDING_PICKUP'"
-                  [class.bg-[#dcfce7]]="detailLine.lineStatus === 'DELIVERED'"
-                  [class.text-[#15803d]]="detailLine.lineStatus === 'DELIVERED'"
+                  [class.bg-[#fef3c7]]="!buyerAllDelivered"
+                  [class.text-[#92400e]]="!buyerAllDelivered"
+                  [class.bg-[#dcfce7]]="buyerAllDelivered"
+                  [class.text-[#15803d]]="buyerAllDelivered"
                 >
-                  {{ detailLine.lineStatus === 'DELIVERED' ? 'Distribuée au client' : 'En attente de distribution' }}
+                  {{ buyerAllDelivered ? 'Colis 100% remis au client' : 'En attente de distribution' }}
                 </span>
               </div>
             </div>
@@ -855,26 +881,18 @@ export class B2cLinePickupRowComponent {
               <button
                 type="button"
                 class="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-bold text-[#163672] hover:bg-indigo-100 cursor-pointer"
-                (click)="workflowStore.downloadBuyerReceiptForLine(detailLine.id)"
+                (click)="workflowStore.downloadBuyerPackageReceiptPdf(buyerLines)"
               >
                 🖨️ Imprimer le Justificatif d'achat du client (PDF)
               </button>
 
-              <button
-                type="button"
-                class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
-                (click)="workflowStore.downloadLineReceiptPdf(detailLine.id)"
-              >
-                📄 Reçu de cet article seul (PDF)
-              </button>
-
-              @if (workflowStore.activeB2cOrder()?.status === 'IN_DELIVERY' && detailLine.lineStatus === 'PENDING_PICKUP') {
+              @if (workflowStore.activeB2cOrder()?.status === 'IN_DELIVERY' && !buyerAllDelivered) {
                 <button
                   type="button"
                   class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white hover:bg-[#146c32] cursor-pointer"
-                  (click)="confirmDeliveryFromDetail(detailLine.id)"
+                  (click)="confirmBuyerPackageDeliveryFromDetail(buyerLines)"
                 >
-                  Confirmer la remise au client
+                  ✅ Confirmer la remise au client
                 </button>
               }
 
@@ -1390,6 +1408,10 @@ export class B2cOrderCounterComponent {
 
     return Array.from(groups.values()).map((g) => ({
       ...g,
+      receiptNumberLabel:
+        g.lines.length <= 1
+          ? (g.lines[0]?.receiptNumber ?? 'REC')
+          : `${g.lines[0].receiptNumber} (+${g.lines.length - 1})`,
       summaryText: `${g.buyerFullName} : ${g.items.join(', ')}`,
     }));
   });
@@ -1693,6 +1715,28 @@ export class B2cOrderCounterComponent {
   confirmDeliveryFromDetail(lineId: string): void {
     this.selectedLineDetail.set(null);
     this.workflowStore.deliverB2cLine(lineId);
+  }
+
+  getBuyerLinesForDetail(detailLine: B2cOrderLineResponse): readonly B2cOrderLineResponse[] {
+    const order = this.workflowStore.activeB2cOrder();
+    if (!order) {
+      return [detailLine];
+    }
+    const lines = this.workflowStore.getBuyerLinesFromOrder(order, detailLine);
+    return lines.length > 0 ? lines : [detailLine];
+  }
+
+  getBuyerTotalCash(lines: readonly B2cOrderLineResponse[]): number {
+    return lines.reduce((sum, l) => sum + Number(l.lineCashAmount || 0), 0);
+  }
+
+  areAllBuyerLinesDelivered(lines: readonly B2cOrderLineResponse[]): boolean {
+    return lines.length > 0 && lines.every((l) => l.lineStatus === 'DELIVERED');
+  }
+
+  confirmBuyerPackageDeliveryFromDetail(lines: readonly B2cOrderLineResponse[]): void {
+    this.selectedLineDetail.set(null);
+    this.workflowStore.deliverBuyerPackage(lines);
   }
 
   openStockAdjustModal(): void {

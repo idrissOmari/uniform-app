@@ -10,6 +10,7 @@ import {
   B2bPurchaseOrderResponse,
   B2cCatalogItemResponse,
   B2cOrderDetailResponse,
+  B2cOrderLineResponse,
   B2cOrderSummaryResponse,
   CatalogConfiguration,
   ClientResponse,
@@ -31,6 +32,7 @@ import {
   UpsertClientStockRequest,
   UserAccountResponse,
 } from '../models/uniform.models';
+import { B2cReceiptPdfGeneratorService } from './b2c-receipt-pdf.service';
 import { CatalogFlyerPdfGeneratorService } from './catalog-flyer-pdf.service';
 import { UniformApiService } from './uniform-api.service';
 
@@ -40,6 +42,7 @@ const CATALOG_CONFIG_STORAGE_KEY = 'uniform_app_catalog_config_v1';
 export class UniformWorkflowStore {
   private readonly api = inject(UniformApiService);
   private readonly catalogFlyerPdfGenerator = inject(CatalogFlyerPdfGeneratorService);
+  private readonly b2cReceiptPdfGenerator = inject(B2cReceiptPdfGeneratorService);
   private readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
 
@@ -58,6 +61,7 @@ export class UniformWorkflowStore {
   private readonly _lastInvitedUser = signal<UserAccountResponse | null>(null);
   private readonly _lastProblem = signal<ProblemDetails | null>(null);
   private readonly _lastStockNotice = signal<string | null>(null);
+  private readonly _lastCreatedReceiptLines = signal<readonly B2cOrderLineResponse[]>([]);
   private readonly _loading = signal<boolean>(false);
   private readonly _cashSaleModalOpen = signal<boolean>(false);
   private readonly _newClientModalOpen = signal<boolean>(false);
@@ -95,6 +99,7 @@ export class UniformWorkflowStore {
   readonly lastInvitedUser = this._lastInvitedUser.asReadonly();
   readonly lastProblem = this._lastProblem.asReadonly();
   readonly lastStockNotice = this._lastStockNotice.asReadonly();
+  readonly lastCreatedReceiptLines = this._lastCreatedReceiptLines.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly cashSaleModalOpen = this._cashSaleModalOpen.asReadonly();
   readonly newClientModalOpen = this._newClientModalOpen.asReadonly();
@@ -113,6 +118,10 @@ export class UniformWorkflowStore {
 
   clearStockNotice(): void {
     this._lastStockNotice.set(null);
+  }
+
+  clearLastCreatedReceipt(): void {
+    this._lastCreatedReceiptLines.set([]);
   }
 
   setCashSaleModalOpen(open: boolean): void {
@@ -971,14 +980,18 @@ export class UniformWorkflowStore {
     }
     this.clearProblem();
     this._loading.set(true);
+    const createdLines: B2cOrderLineResponse[] = [];
     from(payloads)
       .pipe(concatMap((payload) => this.api.addB2cOrderLine(clientId, order.id, payload)))
       .subscribe({
-        next: () => {
-          // Sequential line added
+        next: (createdLine) => {
+          createdLines.push(createdLine);
         },
         complete: () => {
           this._loading.set(false);
+          if (createdLines.length > 0) {
+            this._lastCreatedReceiptLines.set(createdLines);
+          }
           this.loadB2cOrderDetail(clientId, order.id);
           this.api.listB2cOrders(clientId).subscribe({
             next: (orders) => this._b2cOrders.set(orders),
@@ -987,6 +1000,9 @@ export class UniformWorkflowStore {
         },
         error: (err: unknown) => {
           this._loading.set(false);
+          if (createdLines.length > 0) {
+            this._lastCreatedReceiptLines.set(createdLines);
+          }
           this.loadB2cOrderDetail(clientId, order.id);
           this.api.listB2cOrders(clientId).subscribe({
             next: (orders) => this._b2cOrders.set(orders),
@@ -997,18 +1013,69 @@ export class UniformWorkflowStore {
   }
 
   downloadLineReceiptPdf(lineId: string): void {
-    const clientId = this._selectedClientId();
+    const client = this.selectedClient();
     const order = this._activeB2cOrder();
-    if (!clientId || !order) {
+    if (!client || !order) {
       return;
     }
-    this.api.downloadB2cLineReceiptPdf(clientId, order.id, lineId).subscribe({
-      next: (blob) => {
+    const targetLine = order.lines.find((l) => l.id === lineId);
+    if (!targetLine) {
+      this.api.downloadB2cLineReceiptPdf(client.id, order.id, lineId).subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        },
+        error: (err: unknown) => this.handleHttpError(err),
+      });
+      return;
+    }
+    this.downloadBuyerPackageReceiptPdf([targetLine]);
+  }
+
+  downloadBuyerReceiptForLine(lineId: string): void {
+    const order = this._activeB2cOrder();
+    if (!order) {
+      return;
+    }
+    const targetLine = order.lines.find((l) => l.id === lineId);
+    if (!targetLine) {
+      return;
+    }
+    const buyerLines = this.getBuyerLinesFromOrder(order, targetLine);
+    this.downloadBuyerPackageReceiptPdf(buyerLines.length > 0 ? buyerLines : [targetLine]);
+  }
+
+  getBuyerLinesFromOrder(
+    order: B2cOrderDetailResponse,
+    referenceLine: B2cOrderLineResponse
+  ): readonly B2cOrderLineResponse[] {
+    const refName = referenceLine.buyerFullName.trim().toLowerCase();
+    const refPhone = referenceLine.buyerPhone.trim();
+    const refSec = (referenceLine.sectionName ?? '').trim().toLowerCase();
+    return order.lines.filter(
+      (l) =>
+        l.buyerFullName.trim().toLowerCase() === refName &&
+        l.buyerPhone.trim() === refPhone &&
+        (l.sectionName ?? '').trim().toLowerCase() === refSec
+    );
+  }
+
+  downloadBuyerPackageReceiptPdf(lines: readonly B2cOrderLineResponse[]): void {
+    const client = this.selectedClient();
+    const order = this._activeB2cOrder();
+    if (!client || !order || lines.length === 0) {
+      return;
+    }
+    this.clearProblem();
+    const items =
+      this._adminCatalogItems().length > 0 ? this._adminCatalogItems() : this._catalogItems();
+    void this.b2cReceiptPdfGenerator
+      .generateReceiptPdfBlob(client, order, lines, items)
+      .then((blob) => {
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-      },
-      error: (err: unknown) => this.handleHttpError(err),
-    });
+      })
+      .catch((err: unknown) => this.handleHttpError(err));
   }
 
   downloadCatalogFlyerPdf(): void {

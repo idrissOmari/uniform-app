@@ -182,8 +182,8 @@ export class CatalogFlyerPdfGeneratorService {
     // Address & Establishment Type
     const schoolTypeLabel =
       client.clientType === 'PRIMARY_SCHOOL'
-        ? 'École Primaire (Tailles Enfant 2 à 14 ans)'
-        : 'Collège / Lycée (Tailles Enfant & Adulte)';
+        ? 'École Primaire'
+        : 'Collège / Lycée';
     ctx.fillStyle = '#CBD5E1';
     ctx.font = '500 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const addressLine = this.truncateText(
@@ -212,11 +212,11 @@ export class CatalogFlyerPdfGeneratorService {
     ctx.fillText(badgeText, textX + 16, headerY + 168);
 
     // 3. Product Lookbook Grid (2 columns x 2 rows)
-    const gridTop = headerY + headerH + 30;
+    const gridTop = headerY + headerH + 34;
     const gridGapX = 28;
     const gridGapY = 28;
     const cardW = (headerW - gridGapX) / 2;
-    const cardH = 540;
+    const cardH = 576;
 
     if (pageItems.length === 0) {
       this.fillRoundedRect(ctx, marginX, gridTop, headerW, 240, 20, '#FFFFFF');
@@ -242,42 +242,13 @@ export class CatalogFlyerPdfGeneratorService {
           cardW,
           cardH,
           pageItems[i],
-          pageImgs[i],
-          client
+          pageImgs[i]
         );
       }
     }
 
-    // 4. Sections & Ordering Guide Footer
-    const footerAreaY = H - 290;
-
-    // Sections Strip (if sections exist)
-    if (client.sections && client.sections.length > 0) {
-      const secBoxY = footerAreaY;
-      const secBoxH = 68;
-      this.fillRoundedRect(ctx, marginX, secBoxY, headerW, secBoxH, 16, '#FFFBEB');
-      this.strokeRoundedRect(ctx, marginX, secBoxY, headerW, secBoxH, 16, '#FDE68A', 2);
-
-      ctx.fillStyle = '#92400E';
-      ctx.font = 'bold 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const label = 'SECTIONS & CLASSES : ';
-      ctx.fillText(label, marginX + 24, secBoxY + secBoxH / 2);
-      const labelW = ctx.measureText(label).width;
-
-      ctx.fillStyle = '#78350F';
-      ctx.font = '500 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      const secText = this.truncateText(
-        ctx,
-        client.sections.map((s) => s.name).join('   •   '),
-        headerW - labelW - 48
-      );
-      ctx.fillText(secText, marginX + 24 + labelW, secBoxY + secBoxH / 2);
-    }
-
-    // Ordering Guide Box
-    const guideY = H - 204;
+    // 4. Ordering Guide Footer
+    const guideY = H - 208;
     const guideH = 148;
     this.fillRoundedRect(ctx, marginX, guideY, headerW, guideH, 18, '#FFFFFF');
     this.strokeRoundedRect(ctx, marginX, guideY, headerW, guideH, 18, '#E2E8F0', 2);
@@ -292,7 +263,7 @@ export class CatalogFlyerPdfGeneratorService {
     ctx.fillText('MODALITÉS DE COMMANDE AU COMPTOIR DE L’ÉTABLISSEMENT', marginX + 32, guideY + 20);
 
     const steps = [
-      '1. Choisissez vos articles et tailles à partir de ce catalogue officiel.',
+      '1. Choisissez vos articles à partir de ce catalogue officiel.',
       '2. Présentez-vous au comptoir dédié de l’établissement en indiquant le nom et la classe de l’élève.',
       '3. Réglez votre commande au comptant en espèces et récupérez immédiatement votre reçu officiel numéroté.',
     ];
@@ -325,8 +296,7 @@ export class CatalogFlyerPdfGeneratorService {
       frontImg: HTMLImageElement | null;
       backImg: HTMLImageElement | null;
       hasCustomFront: boolean;
-    },
-    client: ClientResponse
+    }
   ): void {
     // Card Shadow & Background
     ctx.save();
@@ -338,7 +308,7 @@ export class CatalogFlyerPdfGeneratorService {
     this.strokeRoundedRect(ctx, x, y, w, h, 22, '#E2E8F0', 2);
 
     // Top Studio Image Area
-    const imgAreaH = 265;
+    const imgAreaH = 355;
     ctx.save();
     ctx.beginPath();
     this.traceRoundedRect(ctx, x + 2, y + 2, w - 4, imgAreaH, 20);
@@ -353,8 +323,8 @@ export class CatalogFlyerPdfGeneratorService {
     if (imgs.frontImg && imgs.backImg) {
       // Side-by-side Face & Dos preview
       const slotW = (w - 48) / 2;
-      this.drawImageContained(ctx, imgs.frontImg, x + 16, y + 44, slotW, imgAreaH - 58);
-      this.drawImageContained(ctx, imgs.backImg, x + 32 + slotW, y + 44, slotW, imgAreaH - 58);
+      this.drawImageContained(ctx, imgs.frontImg, x + 16, y + 48, slotW, imgAreaH - 64);
+      this.drawImageContained(ctx, imgs.backImg, x + 32 + slotW, y + 48, slotW, imgAreaH - 64);
 
       // Tiny Face / Dos labels
       this.fillRoundedRect(ctx, x + 20, y + imgAreaH - 34, 62, 24, 8, 'rgba(15, 23, 42, 0.65)');
@@ -374,7 +344,7 @@ export class CatalogFlyerPdfGeneratorService {
       ctx.fillText('FACE', x + 51, y + imgAreaH - 22);
       ctx.fillText('DOS', x + 64 + slotW, y + imgAreaH - 22);
     } else if (imgs.frontImg) {
-      this.drawImageContained(ctx, imgs.frontImg, x + 32, y + 36, w - 64, imgAreaH - 48);
+      this.drawImageContained(ctx, imgs.frontImg, x + 32, y + 40, w - 64, imgAreaH - 56);
     }
     ctx.restore();
 
@@ -427,15 +397,15 @@ export class CatalogFlyerPdfGeneratorService {
 
     // Card Content Body
     const padX = 24;
-    let curY = y + imgAreaH + 20;
+    let curY = y + imgAreaH + 26;
 
     // Product Title
     ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 25px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(this.truncateText(ctx, item.name, w - padX * 2), x + padX, curY);
-    curY += 34;
+    curY += 38;
 
     // Cut / Style & Color Swatch Row
     const palette = resolveGarmentPalette(item.colorReference);
@@ -448,74 +418,32 @@ export class CatalogFlyerPdfGeneratorService {
     ctx.stroke();
 
     ctx.fillStyle = '#334155';
-    ctx.font = '600 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '600 19px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const colorAndStyle = `${item.colorReference}${
       item.garmentStyle && item.garmentStyle !== item.name ? '  •  ' + item.garmentStyle : ''
     }`;
     ctx.fillText(this.truncateText(ctx, colorAndStyle, w - padX * 2 - 28), x + padX + 28, curY);
-    curY += 34;
-
-    // Sizes Pills Section
-    ctx.fillStyle = '#64748B';
-    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('TAILLES DISPONIBLES :', x + padX, curY);
-    curY += 22;
-
-    const sizesList = this.extractTranslatedSizeList(item.availableSizes, client);
-    let pillX = x + padX;
-    let pillY = curY;
-    ctx.font = '600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
-    for (const sizeLabel of sizesList.slice(0, 8)) {
-      const pw = ctx.measureText(sizeLabel).width + 20;
-      if (pillX + pw > x + w - padX) {
-        break;
-      }
-      this.fillRoundedRect(ctx, pillX, pillY, pw, 28, 8, '#F1F5F9');
-      this.strokeRoundedRect(ctx, pillX, pillY, pw, 28, 8, '#CBD5E1', 1);
-      ctx.fillStyle = '#1E293B';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(sizeLabel, pillX + 10, pillY + 14);
-      pillX += pw + 8;
-    }
 
     // Bottom Price Banner inside Card
-    const priceBarH = 62;
-    const priceBarY = y + h - priceBarH - 16;
-    this.fillRoundedRect(ctx, x + 16, priceBarY, w - 32, priceBarH, 14, '#ECFDF5');
-    this.strokeRoundedRect(ctx, x + 16, priceBarY, w - 32, priceBarH, 14, '#A7F3D0', 1.5);
+    const priceBarH = 66;
+    const priceBarY = y + h - priceBarH - 20;
+    this.fillRoundedRect(ctx, x + 20, priceBarY, w - 40, priceBarH, 14, '#ECFDF5');
+    this.strokeRoundedRect(ctx, x + 20, priceBarY, w - 40, priceBarH, 14, '#A7F3D0', 1.5);
 
     ctx.fillStyle = '#065F46';
     ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('PRIX OFFICIEL TTC', x + 34, priceBarY + priceBarH / 2);
+    ctx.fillText('PRIX OFFICIEL TTC', x + 38, priceBarY + priceBarH / 2);
 
     ctx.fillStyle = '#047857';
-    ctx.font = 'bold 30px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 31px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(
       `${Number(item.b2cUnitPrice).toFixed(2)} DH`,
-      x + w - 34,
+      x + w - 38,
       priceBarY + priceBarH / 2 + 1
     );
-  }
-
-  private extractTranslatedSizeList(
-    availableSizes: string | null | undefined,
-    client: ClientResponse
-  ): string[] {
-    if (availableSizes && availableSizes.trim().length > 0) {
-      return availableSizes
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-        .map((code) => formatSizeLabelFr(code, false));
-    }
-    if (client.clientType === 'PRIMARY_SCHOOL') {
-      return ['2 ans', '4 ans', '6 ans', '8 ans', '10 ans', '12 ans', '14 ans'];
-    }
-    return ['6 ans', '8 ans', '10 ans', '12 ans', '14 ans', 'XS', 'S', 'M', 'L', 'XL'];
   }
 
   private extractInitials(name: string): string {

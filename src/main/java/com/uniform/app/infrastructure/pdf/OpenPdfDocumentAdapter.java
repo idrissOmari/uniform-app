@@ -100,43 +100,117 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         catalogItem.assertBelongsToClient(clientId);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Document document = new Document(PageSize.A4, 40, 40, 40, 40)) {
+        try (Document document = new Document(PageSize.A4, 34, 34, 34, 34)) {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            Paragraph title = new Paragraph("REÇU D'ENCAISSEMENT ESPÈCES — B2C", TITLE_FONT);
-            title.setAlignment(Element.ALIGN_CENTER);
-            title.setSpacingAfter(16f);
-            document.add(title);
+            // 1. Luxury Official Header Banner with School Crest/Logo
+            PdfPTable headerBanner = new PdfPTable(new float[]{1.2f, 4.8f});
+            headerBanner.setWidthPercentage(100f);
+            headerBanner.setSpacingAfter(14f);
 
-            document.add(new Paragraph("N° de Reçu : " + line.receiptNumber(), BOLD_FONT));
-            document.add(new Paragraph("N° de Commande B2C : " + b2cOrder.orderNumber(), BODY_FONT));
-            document.add(new Paragraph("Date d'encaissement : " + FRENCH_DATE_FORMAT.format(line.createdAt()), BODY_FONT));
-            document.add(new Paragraph("Établissement / Client : " + client.name() + " — " + client.address(), BODY_FONT));
-            document.add(new Paragraph(" "));
+            PdfPCell logoCell = new PdfPCell();
+            logoCell.setBackgroundColor(NAVY_DARK);
+            logoCell.setBorderColor(NAVY_DARK);
+            logoCell.setPadding(12f);
+            logoCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            logoCell.setHorizontalAlignment(Element.ALIGN_CENTER);
 
-            document.add(new Paragraph("Coordonnées de l'Acheteur", SUBTITLE_FONT));
-            document.add(new Paragraph("Nom complet : " + line.buyerFullName(), BODY_FONT));
-            if (line.sectionName() != null && !line.sectionName().isBlank()) {
-                document.add(new Paragraph("Section / Classe : " + line.sectionName(), BOLD_FONT));
+            Image logoImage = resolveLogoOrEmblemImage(client.logoStorageKey(), client.name());
+            if (logoImage != null) {
+                logoImage.scaleToFit(64f, 64f);
+                logoImage.setAlignment(Element.ALIGN_CENTER);
+                logoCell.addElement(logoImage);
             }
-            document.add(new Paragraph("Téléphone : " + line.buyerPhone(), BODY_FONT));
-            document.add(new Paragraph("Email : " + line.buyerEmail(), BODY_FONT));
-            document.add(new Paragraph(" "));
+            headerBanner.addCell(logoCell);
 
-            PdfPTable table = new PdfPTable(new float[]{3f, 1.5f, 1.2f, 1.2f, 1.8f, 1.8f});
+            PdfPCell titleCell = new PdfPCell();
+            titleCell.setBackgroundColor(NAVY_DARK);
+            titleCell.setBorderColor(NAVY_DARK);
+            titleCell.setPaddingTop(12f);
+            titleCell.setPaddingBottom(12f);
+            titleCell.setPaddingLeft(8f);
+            titleCell.setPaddingRight(14f);
+            titleCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+
+            Paragraph superTitle = new Paragraph("JUSTIFICATIF D'ACHAT OFFICIEL — REÇU D'ENCAISSEMENT ESPÈCES (B2C)", HERO_SUPERTITLE_FONT);
+            superTitle.setSpacingAfter(4f);
+            titleCell.addElement(superTitle);
+
+            Paragraph schoolTitle = new Paragraph(client.name().toUpperCase(Locale.ROOT), HERO_TITLE_FONT);
+            schoolTitle.setSpacingAfter(4f);
+            titleCell.addElement(schoolTitle);
+
+            Paragraph addressPara = new Paragraph("Établissement : " + client.address(), HERO_SUBTITLE_FONT);
+            titleCell.addElement(addressPara);
+            headerBanner.addCell(titleCell);
+            document.add(headerBanner);
+
+            // 2. Receipt Reference & Paid Stamp Bar
+            PdfPTable metaBar = new PdfPTable(new float[]{3.4f, 2.2f});
+            metaBar.setWidthPercentage(100f);
+            metaBar.setSpacingAfter(14f);
+
+            PdfPCell refCell = new PdfPCell();
+            refCell.setBackgroundColor(SLATE_BG);
+            refCell.setBorderColor(CARD_BORDER);
+            refCell.setPadding(10f);
+            refCell.addElement(new Paragraph("N° de Justificatif / Reçu : " + line.receiptNumber(), SUBTITLE_FONT));
+            refCell.addElement(new Paragraph("Lot de Commande B2C : " + b2cOrder.orderNumber(), BODY_FONT));
+            refCell.addElement(new Paragraph("Date d'achat : " + FRENCH_DATE_FORMAT.format(line.createdAt()), BODY_FONT));
+            metaBar.addCell(refCell);
+
+            PdfPCell stampCell = new PdfPCell();
+            stampCell.setBackgroundColor(EMERALD_BG);
+            stampCell.setBorderColor(new Color(167, 243, 208));
+            stampCell.setPadding(10f);
+            stampCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
+            stampCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            Paragraph paidBadge = new Paragraph("PAYÉ COMPTANT EN ESPÈCES", new Font(Font.HELVETICA, 10f, Font.BOLD, EMERALD_DARK));
+            paidBadge.setAlignment(Element.ALIGN_CENTER);
+            stampCell.addElement(paidBadge);
+            Paragraph paidAmountBadge = new Paragraph(line.lineCashAmount().toPlainString() + " DH TTC", CARD_PRICE_FONT);
+            paidAmountBadge.setAlignment(Element.ALIGN_CENTER);
+            stampCell.addElement(paidAmountBadge);
+            metaBar.addCell(stampCell);
+            document.add(metaBar);
+
+            // 3. Buyer & Student Section Block
+            PdfPTable buyerBox = new PdfPTable(1);
+            buyerBox.setWidthPercentage(100f);
+            buyerBox.setSpacingAfter(14f);
+            PdfPCell buyerCell = new PdfPCell();
+            buyerCell.setBackgroundColor(Color.WHITE);
+            buyerCell.setBorderColor(CARD_BORDER);
+            buyerCell.setPadding(12f);
+            Paragraph buyerHeader = new Paragraph("COORDONNÉES DU CLIENT / ÉLÈVE", SUBTITLE_FONT);
+            buyerHeader.setSpacingAfter(6f);
+            buyerCell.addElement(buyerHeader);
+            buyerCell.addElement(new Paragraph("Nom complet du parent / acheteur : " + line.buyerFullName(), BOLD_FONT));
+            if (line.sectionName() != null && !line.sectionName().isBlank()) {
+                buyerCell.addElement(new Paragraph("Section / Classe de l'élève : " + line.sectionName(), BOLD_FONT));
+            }
+            buyerCell.addElement(new Paragraph("Téléphone : " + (line.buyerPhone() != null && !line.buyerPhone().isBlank() ? line.buyerPhone() : "Non renseigné"), BODY_FONT));
+            if (line.buyerEmail() != null && !line.buyerEmail().isBlank()) {
+                buyerCell.addElement(new Paragraph("Email : " + line.buyerEmail(), BODY_FONT));
+            }
+            buyerBox.addCell(buyerCell);
+            document.add(buyerBox);
+
+            // 4. Ordered Item Details Table
+            PdfPTable table = new PdfPTable(new float[]{3.2f, 1.4f, 1.2f, 1.1f, 1.7f, 1.8f});
             table.setWidthPercentage(100f);
-            table.setSpacingBefore(8f);
-            table.setSpacingAfter(12f);
+            table.setSpacingBefore(4f);
+            table.setSpacingAfter(14f);
 
-            addHeaderCell(table, "Article");
-            addHeaderCell(table, "Genre");
+            addHeaderCell(table, "Désignation de l'article");
+            addHeaderCell(table, "Coupe / Genre");
             addHeaderCell(table, "Taille");
             addHeaderCell(table, "Quantité");
             addHeaderCell(table, "Prix Unitaire TTC");
-            addHeaderCell(table, "Montant Espèces");
+            addHeaderCell(table, "Total TTC");
 
-            addBodyCell(table, catalogItem.name() + " (" + catalogItem.referenceCode() + ")");
+            addBodyCell(table, catalogItem.name() + " (Réf. " + catalogItem.referenceCode() + " — " + catalogItem.colorReference() + ")");
             addBodyCell(table, translateGenderFr(line.gender().name()));
             addBodyCell(table, translateSizeFr(line.size().name()));
             addBodyCell(table, String.valueOf(line.quantity()));
@@ -145,15 +219,16 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
 
             document.add(table);
 
+            // 5. Financial Total & Pickup Voucher Footer
             Paragraph totalParagraph = new Paragraph(
                     "MONTANT TOTAL ACQUITTÉ EN ESPÈCES AU COMPTANT : " + line.lineCashAmount().toPlainString() + " MAD",
                     SUBTITLE_FONT
             );
-            totalParagraph.setSpacingAfter(10f);
+            totalParagraph.setSpacingAfter(8f);
             document.add(totalParagraph);
 
             document.add(new Paragraph(
-                    "Mention légale : Paiement intégral en espèces confirmé au comptant.",
+                    "Mention légale : Paiement intégral en espèces confirmé au comptant. Conservez précieusement ce justificatif d'achat officiel pour le retrait des tenues auprès de l'établissement.",
                     BODY_FONT
             ));
         }
@@ -279,8 +354,8 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
             titleCell.addElement(schoolTitle);
 
             String schoolTypeLabel = client.isPrimarySchool()
-                    ? "Établissement Primaire (Grille Enfant 2 à 14 ans)"
-                    : "Collège / Lycée (Grilles Enfant & Adulte)";
+                    ? "Établissement Primaire"
+                    : "Collège / Lycée";
             Paragraph metaLine = new Paragraph(schoolTypeLabel + "  •  " + client.address(), HERO_SUBTITLE_FONT);
             metaLine.setSpacingAfter(6f);
             titleCell.addElement(metaLine);
@@ -295,10 +370,6 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
             document.add(headerBanner);
 
             // 2. Product Showcase Cards (2-column Lookbook Grid)
-            String defaultSizesLabel = client.isPrimarySchool()
-                    ? "2 ans, 4 ans, 6 ans, 8 ans, 10 ans, 12 ans, 14 ans"
-                    : "Enfant (2-14 ans) & Adulte (XS à 3XL)";
-
             if (catalogItems.isEmpty()) {
                 Paragraph emptyMsg = new Paragraph(
                         "Aucun article n'est actuellement configuré dans le catalogue de cet établissement.",
@@ -315,7 +386,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
                     PdfPCell cardWrapper = new PdfPCell();
                     cardWrapper.setBorder(Rectangle.NO_BORDER);
                     cardWrapper.setPadding(5f);
-                    cardWrapper.addElement(buildProductLookbookCard(item, defaultSizesLabel));
+                    cardWrapper.addElement(buildProductLookbookCard(item));
                     grid.addCell(cardWrapper);
                 }
 
@@ -329,31 +400,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
                 document.add(grid);
             }
 
-            // 3. Establishment Sections (without any MOQ)
-            if (client.sections() != null && !client.sections().isEmpty()) {
-                PdfPTable sectionsBox = new PdfPTable(1);
-                sectionsBox.setWidthPercentage(100f);
-                sectionsBox.setSpacingAfter(10f);
-
-                PdfPCell secCell = new PdfPCell();
-                secCell.setBackgroundColor(GOLD_SOFT);
-                secCell.setBorderColor(new Color(253, 230, 138));
-                secCell.setBorderWidth(1f);
-                secCell.setPadding(10f);
-
-                String sectionsList = client.sections().stream()
-                        .map(s -> s.name())
-                        .collect(Collectors.joining("  •  "));
-                Paragraph secPara = new Paragraph();
-                secPara.add(new Chunk("Classes & Sections de l'établissement : ", FOOTER_TITLE_FONT));
-                secPara.add(new Chunk(sectionsList, FOOTER_TEXT_FONT));
-                secCell.addElement(secPara);
-                sectionsBox.addCell(secCell);
-
-                document.add(sectionsBox);
-            }
-
-            // 4. Elegant Ordering Guide Footer
+            // 3. Elegant Ordering Guide Footer
             PdfPTable footerBox = new PdfPTable(1);
             footerBox.setWidthPercentage(100f);
             PdfPCell footerCell = new PdfPCell();
@@ -367,7 +414,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
             footerCell.addElement(guideTitle);
 
             Paragraph guideSteps = new Paragraph(
-                    "1. Sélectionnez vos modèles et tailles à l'aide de ce catalogue officiel.\n"
+                    "1. Sélectionnez vos modèles à l'aide de ce catalogue officiel.\n"
                             + "2. Présentez-vous au comptoir dédié de l'établissement en indiquant le nom et la classe de l'élève.\n"
                             + "3. Réglez votre commande au comptant en espèces et conservez votre reçu officiel numéroté.",
                     FOOTER_TEXT_FONT
@@ -379,7 +426,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         return out.toByteArray();
     }
 
-    private PdfPTable buildProductLookbookCard(CatalogItem item, String defaultSizesLabel) {
+    private PdfPTable buildProductLookbookCard(CatalogItem item) {
         PdfPTable card = new PdfPTable(1);
         card.setWidthPercentage(100f);
 
@@ -394,11 +441,11 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         imageCell.setPadding(10f);
         imageCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         imageCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        imageCell.setFixedHeight(130f);
+        imageCell.setFixedHeight(145f);
 
         Image previewImg = resolveProductPreviewImage(item);
         if (previewImg != null) {
-            previewImg.scaleToFit(210f, 110f);
+            previewImg.scaleToFit(220f, 125f);
             previewImg.setAlignment(Element.ALIGN_CENTER);
             imageCell.addElement(previewImg);
         }
@@ -431,17 +478,8 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         Paragraph colorLine = new Paragraph();
         colorLine.add(new Chunk("Coloris : ", CARD_LABEL_FONT));
         colorLine.add(new Chunk(item.colorReference(), CARD_VALUE_FONT));
-        colorLine.setSpacingAfter(3f);
+        colorLine.setSpacingAfter(4f);
         bodyCell.addElement(colorLine);
-
-        String sizesLabel = (item.availableSizes() != null && !item.availableSizes().isBlank())
-                ? formatAvailableSizesFr(item.availableSizes())
-                : defaultSizesLabel;
-        Paragraph sizesLine = new Paragraph();
-        sizesLine.add(new Chunk("Tailles : ", CARD_LABEL_FONT));
-        sizesLine.add(new Chunk(sizesLabel, CARD_VALUE_FONT));
-        sizesLine.setSpacingAfter(4f);
-        bodyCell.addElement(sizesLine);
 
         if (item.visualPlacementNotes() != null && !item.visualPlacementNotes().isBlank()) {
             Paragraph notesLine = new Paragraph();

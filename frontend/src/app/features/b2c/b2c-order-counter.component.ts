@@ -98,10 +98,21 @@ export interface StockVariantSummaryRow {
       </span>
     </td>
     <td class="px-4 py-3.5 text-right">
-      <app-table-action-menu
-        [menuTitle]="line().buyerFullName + ' · ' + line().receiptNumber"
-        [actions]="rowActions()"
-      />
+      <div class="inline-flex items-center justify-end gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-1.5 text-xs font-bold text-[#163672] shadow-2xs transition hover:bg-indigo-100 cursor-pointer"
+          title="Imprimer le justificatif d'achat complet de ce client (PDF)"
+          (click)="buyerReceiptDownloadRequested.emit(line().id)"
+        >
+          <span>🖨️</span>
+          <span>Justificatif PDF</span>
+        </button>
+        <app-table-action-menu
+          [menuTitle]="line().buyerFullName + ' · ' + line().receiptNumber"
+          [actions]="rowActions()"
+        />
+      </div>
     </td>
   `,
 })
@@ -111,21 +122,27 @@ export class B2cLinePickupRowComponent {
   readonly parentOrderInDelivery = input<boolean>(false);
   readonly detailRequested = output<B2cOrderLineResponse>();
   readonly receiptDownloadRequested = output<string>();
+  readonly buyerReceiptDownloadRequested = output<string>();
   readonly deliveryConfirmed = output<string>();
 
   readonly rowActions = computed<readonly TableActionItem[]>(() => {
     const l = this.line();
     const items: TableActionItem[] = [
       {
-        label: 'Afficher le détail de la commande',
-        icon: '🔍',
+        label: "Imprimer le Justificatif d'achat du client (PDF)",
+        icon: '🖨️',
         variant: 'primary',
-        onSelect: () => this.detailRequested.emit(l),
+        onSelect: () => this.buyerReceiptDownloadRequested.emit(l.id),
       },
       {
-        label: 'Télécharger le Reçu PDF',
+        label: 'Imprimer le reçu de cette ligne uniquement (PDF)',
         icon: '📄',
         onSelect: () => this.receiptDownloadRequested.emit(l.id),
+      },
+      {
+        label: 'Afficher le détail de la commande',
+        icon: '🔍',
+        onSelect: () => this.detailRequested.emit(l),
       },
     ];
 
@@ -389,6 +406,42 @@ export class B2cLinePickupRowComponent {
         <!-- =================================================================== -->
         <!-- VUE COMMANDE GLOBALE & DISTRIBUTION (OPÉRATEUR & ADMIN)             -->
         <!-- =================================================================== -->
+        @if (workflowStore.lastCreatedReceiptLines().length > 0) {
+          @let recentLines = workflowStore.lastCreatedReceiptLines();
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-emerald-300 bg-emerald-50/90 px-5 py-4 shadow-xs">
+            <div class="flex items-start sm:items-center gap-3">
+              <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-lg text-white">
+                ✓
+              </span>
+              <div>
+                <div class="text-sm font-extrabold text-emerald-950">
+                  Commande enregistrée avec succès pour {{ recentLines[0].buyerFullName }}
+                </div>
+                <div class="text-xs font-medium text-emerald-800">
+                  {{ recentLines.length }} ligne(s) ajoutée(s) · N° {{ recentLines[0].receiptNumber }} · Le justificatif d'achat officiel est prêt à être imprimé.
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="rounded-xl bg-[#16803c] px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-[#146c32] cursor-pointer"
+                (click)="workflowStore.downloadBuyerPackageReceiptPdf(recentLines)"
+              >
+                🖨️ Imprimer le Justificatif d'achat (PDF)
+              </button>
+              <button
+                type="button"
+                class="rounded-lg p-2 text-emerald-700 hover:bg-emerald-100 cursor-pointer"
+                title="Fermer"
+                (click)="workflowStore.clearLastCreatedReceipt()"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        }
+
         @if (workflowStore.activeB2cOrder(); as order) {
           <!-- BANNIÈRE PRINCIPALE -->
           <div class="ui-banner">
@@ -564,7 +617,7 @@ export class B2cLinePickupRowComponent {
                     Contenu de la Commande Globale
                   </h3>
 
-                  @if (workflowStore.b2cOrders().length > 1) {
+                  @if (workflowStore.b2cOrders().length >= 1) {
                     <select
                       class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
                       [value]="order.id"
@@ -637,7 +690,7 @@ export class B2cLinePickupRowComponent {
                         </div>
                       </div>
 
-                      <div class="flex items-center gap-3">
+                      <div class="flex flex-wrap items-center gap-3">
                         <span class="text-xs font-bold text-slate-600">
                           {{ pkg.totalQuantity }} art. · {{ pkg.totalCashAmount | number: '1.0-2' }} DH
                         </span>
@@ -650,6 +703,13 @@ export class B2cLinePickupRowComponent {
                         >
                           {{ pkg.allDelivered ? 'Colis remis' : 'À distribuer' }}
                         </span>
+                        <button
+                          type="button"
+                          class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-[#163672] shadow-2xs transition hover:bg-indigo-50 cursor-pointer"
+                          (click)="workflowStore.downloadBuyerPackageReceiptPdf(pkg.lines)"
+                        >
+                          🖨️ Justificatif d'achat (PDF)
+                        </button>
                       </div>
                     </div>
                   } @empty {
@@ -680,6 +740,7 @@ export class B2cLinePickupRowComponent {
                           [parentOrderInDelivery]="order.status === 'IN_DELIVERY'"
                           (detailRequested)="selectedLineDetail.set($event)"
                           (receiptDownloadRequested)="workflowStore.downloadLineReceiptPdf($event)"
+                          (buyerReceiptDownloadRequested)="workflowStore.downloadBuyerReceiptForLine($event)"
                           (deliveryConfirmed)="workflowStore.deliverB2cLine($event)"
                         ></tr>
                       } @empty {
@@ -803,10 +864,18 @@ export class B2cLinePickupRowComponent {
             <div class="mt-6 flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4">
               <button
                 type="button"
+                class="rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-bold text-[#163672] hover:bg-indigo-100 cursor-pointer"
+                (click)="workflowStore.downloadBuyerReceiptForLine(detailLine.id)"
+              >
+                🖨️ Imprimer le Justificatif d'achat du client (PDF)
+              </button>
+
+              <button
+                type="button"
                 class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 (click)="workflowStore.downloadLineReceiptPdf(detailLine.id)"
               >
-                Télécharger le Reçu PDF
+                📄 Reçu de cet article seul (PDF)
               </button>
 
               @if (workflowStore.activeB2cOrder()?.status === 'IN_DELIVERY' && detailLine.lineStatus === 'PENDING_PICKUP') {
@@ -986,11 +1055,6 @@ export class B2cLinePickupRowComponent {
                   <label class="block text-xs font-bold text-slate-800">
                     Section / Classe de l'élève <span class="font-bold text-rose-600">*</span>
                   </label>
-                  @if (selectedClientSection(); as sec) {
-                    <span class="rounded-full bg-[#dcfce7] px-2.5 py-0.5 text-xs font-extrabold text-[#15803d]">
-                      Compteur classe : {{ getRemainingCapacityForSection(sec) }} place(s) restante(s) / {{ sec.capacity }}
-                    </span>
-                  }
                 </div>
 
                 @if (clientSections().length > 0) {
@@ -1000,11 +1064,9 @@ export class B2cLinePickupRowComponent {
                     [class.border-rose-400]="submitted() && !isSectionSelectionValid()"
                     [class.border-slate-300]="!(submitted() && !isSectionSelectionValid())"
                   >
-                    <option value="">-- Sélectionner une section ({{ clientSections().length }} disponible(s)) --</option>
+                    <option value="">-- Sélectionner une section --</option>
                     @for (sec of clientSections(); track sec.id) {
-                      <option [value]="sec.id">
-                        {{ sec.name }} — Compteur : {{ getRemainingCapacityForSection(sec) }} restant(s) / {{ sec.capacity }} ({{ getOrderedCountForSection(sec) }} cmd.)
-                      </option>
+                      <option [value]="sec.id">{{ sec.name }}</option>
                     }
                   </select>
                 } @else {
@@ -1300,6 +1362,7 @@ export class B2cOrderCounterComponent {
         buyerPhone: string;
         sectionName: string | null;
         items: string[];
+        lines: B2cOrderLineResponse[];
         totalQuantity: number;
         totalCashAmount: number;
         allDelivered: boolean;
@@ -1317,6 +1380,7 @@ export class B2cOrderCounterComponent {
           buyerPhone: line.buyerPhone,
           sectionName: line.sectionName ?? null,
           items: [],
+          lines: [],
           totalQuantity: 0,
           totalCashAmount: 0,
           allDelivered: true,
@@ -1326,6 +1390,7 @@ export class B2cOrderCounterComponent {
       const itemName = this.resolveCatalogItemName(line.catalogItemId);
       const sizeLabel = line.size.startsWith('AGE_') ? `${line.size.replace('AGE_', '')} ans` : line.size;
       group.items.push(`${line.quantity}× ${itemName} (${sizeLabel})`);
+      group.lines.push(line);
       group.totalQuantity += line.quantity;
       group.totalCashAmount += line.lineCashAmount;
       if (line.lineStatus === 'PENDING_PICKUP') {

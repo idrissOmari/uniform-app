@@ -1,11 +1,11 @@
 #!/usr/bin/env zsh
 # ==============================================================================
-# UniformApp — Exposition publique HTTPS via Cloudflare Quick Tunnel
+# BidLab — Exposition publique HTTPS via Cloudflare Quick Tunnel
 # ==============================================================================
 set -e
 export PATH="/opt/homebrew/bin:$PATH"
 
-echo "🚀 Vérification des services UniformApp..."
+echo "🚀 Vérification des services BidLab..."
 if ! lsof -i :8080 >/dev/null 2>&1; then
   echo "⚠️  Le backend Quarkus (port 8080) ne semble pas démarré. Lancez d'abord : mvn quarkus:dev"
 fi

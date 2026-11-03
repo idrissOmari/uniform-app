@@ -661,12 +661,12 @@ export class B2cReceiptPdfGeneratorService {
   }
 
   private extractInitials(name: string): string {
-    const parts = (name || 'UA').trim().split(/\s+/);
+    const parts = (name || 'BL').trim().split(/\s+/);
     const chars = parts
       .filter((p) => p.length > 0)
       .slice(0, 2)
       .map((p) => p[0].toUpperCase());
-    return chars.join('') || 'UA';
+    return chars.join('') || 'BL';
   }
 
   private truncateText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {

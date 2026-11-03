@@ -1,7 +1,7 @@
 /**
- * UniformApp — Backend Cloud Serverless Autonome (Cloudflare Pages Functions + Cloudflare D1)
+ * BidLab (bidlab.ma) — Backend Cloud Serverless Autonome (Cloudflare Pages Functions + Cloudflare D1)
  * Fonctionne 100% dans le Cloud Cloudflare (aucun serveur local requis).
- * Implémente l'intégralité du domaine métier UniformApp (GEMINI.md) :
+ * Implémente l'intégralité du domaine métier BidLab (GEMINI.md) :
  * - Multi-tenancy strict par clientId (Écoles Primaires, Collèges/Lycées, Organisations)
  * - Authentification JWT & Gestion des utilisateurs / invitations (ROLE_ADMIN, ROLE_USER)
  * - Référentiel des Genres (MEN, WOMEN, UNISEX, KIDS) & Grilles de Tailles (Adulte vs Enfant)
@@ -181,7 +181,7 @@ function createInitialState() {
       {
         id: adminId,
         username: 'admin',
-        email: 'admin@uniform-app.local',
+        email: 'admin@bidlab.ma',
         password: 'admin',
         fullName: 'Administrateur Principal',
         role: 'ROLE_ADMIN',
@@ -197,7 +197,7 @@ function createInitialState() {
       {
         id: operateurId,
         username: 'operateur',
-        email: 'sara.elamrani@uniform-school.ma',
+        email: 'sara.elamrani@bidlab.ma',
         password: 'operateur',
         fullName: 'Sara El Amrani',
         role: 'ROLE_USER',
@@ -383,6 +383,24 @@ async function loadState(env) {
         .first();
       if (row && row.v) {
         const parsed = JSON.parse(row.v);
+        if (Array.isArray(parsed.users)) {
+          let migrated = false;
+          for (const u of parsed.users) {
+            if (u.email === 'admin@uniform-app.local') {
+              u.email = 'admin@bidlab.ma';
+              migrated = true;
+            } else if (u.email === 'sara.elamrani@uniform-school.ma') {
+              u.email = 'sara.elamrani@bidlab.ma';
+              migrated = true;
+            }
+          }
+          if (migrated) {
+            await db
+              .prepare("INSERT OR REPLACE INTO uniform_kv_store (k, v, updated_at) VALUES ('uniform_state_v1', ?1, ?2)")
+              .bind(JSON.stringify(parsed), new Date().toISOString())
+              .run();
+          }
+        }
         memoryStateCache = parsed;
         return parsed;
       }
@@ -530,7 +548,7 @@ function jsonResponse(data, status = 200, origin = '*') {
 function problemResponse(status, errorCode, title, detail, instance, origin = '*') {
   return new Response(
     JSON.stringify({
-      type: `https://uniform-app.local/problems/${errorCode.toLowerCase().replace(/_/g, '-')}`,
+      type: `https://bidlab.ma/problems/${errorCode.toLowerCase().replace(/_/g, '-')}`,
       title,
       status,
       detail,
@@ -813,7 +831,7 @@ export async function onRequest(context) {
   if (path === '/api/v1/auth/token' && method === 'POST') {
     const username = String(body.username || 'admin');
     const role = body.role === 'ROLE_ADMIN' ? 'ROLE_ADMIN' : 'ROLE_USER';
-    const fakeUser = { id: uuid(), username, email: `${username}@uniform-app.local`, fullName: username, role };
+    const fakeUser = { id: uuid(), username, email: `${username}@bidlab.ma`, fullName: username, role };
     return jsonResponse(
       {
         accessToken: createJwtToken(fakeUser),

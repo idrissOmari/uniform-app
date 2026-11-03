@@ -13,7 +13,7 @@ import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store
       <div class="overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 backdrop-blur-md shadow-[0_20px_50px_-12px_rgba(79,70,229,0.18)]">
         <div class="bg-gradient-to-br from-[#090d16] via-[#1e1b4b] to-[#3b0764] px-6 py-7 sm:px-8 text-center text-white">
           <div class="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-lg font-extrabold text-white shadow-[0_0_24px_rgba(99,102,241,0.55)] ring-1 ring-white/30">
-            U
+            B
           </div>
           <h2 class="text-xl font-extrabold tracking-tight text-white">
             {{ 'app.title' | t }}

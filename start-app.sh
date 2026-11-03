@@ -27,7 +27,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "=================================================================="
-echo "🚀 Lancement de UNIFORM-APP (MySQL 8.4 + Quarkus 3 + Angular 21)"
+echo "🚀 Lancement de BidLab (MySQL 8.4 + Quarkus 3 + Angular 21)"
 echo "=================================================================="
 
 # ------------------------------------------------------------------

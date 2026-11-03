@@ -49,12 +49,12 @@ public class EmailInvitationNotificationService {
                 <html lang="fr">
                 <head>
                   <meta charset="UTF-8" />
-                  <title>Invitation à rejoindre UNIFORM-APP</title>
+                  <title>Invitation à rejoindre BidLab</title>
                 </head>
                 <body style="font-family: Inter, Arial, sans-serif; color: #0f172a; line-height: 1.6; max-width: 600px; margin: 24px auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                  <h2 style="margin-top: 0; color: #1e293b;">Bienvenue sur UNIFORM-APP</h2>
+                  <h2 style="margin-top: 0; color: #1e293b;">Bienvenue sur BidLab</h2>
                   <p>Bonjour <strong>%s</strong>,</p>
-                  <p>Un administrateur vous a invité(e) à rejoindre la plateforme <strong>UNIFORM-APP</strong>.</p>
+                  <p>Un administrateur vous a invité(e) à rejoindre la plateforme <strong>BidLab</strong>.</p>
                   <ul style="background: #f8fafc; padding: 16px 32px; border-radius: 8px; border: 1px solid #e2e8f0;">
                     <li><strong>Identifiant :</strong> %s</li>
                     <li><strong>Email :</strong> %s</li>

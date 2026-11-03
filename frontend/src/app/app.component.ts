@@ -31,7 +31,7 @@ import { isImageUrl } from './core/utils/image-upload.util';
               <div class="flex items-center justify-between gap-3 px-5 pt-5 pb-4 border-b border-white/10">
                 <div class="flex items-center gap-3 min-w-0">
                   <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-base font-extrabold text-white shadow-[0_0_20px_rgba(99,102,241,0.45)] ring-1 ring-white/25">
-                    U
+                    B
                   </div>
                   <div class="min-w-0">
                     <div class="truncate text-[15px] font-extrabold tracking-tight leading-tight text-white">
@@ -182,7 +182,7 @@ import { isImageUrl } from './core/utils/image-upload.util';
             <!-- En-tête Marque -->
             <div class="flex items-center gap-3.5 px-5 pt-6 pb-5 border-b border-white/10">
               <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-base font-extrabold text-white shadow-[0_0_20px_rgba(99,102,241,0.45)] ring-1 ring-white/25">
-                U
+                B
               </div>
               <div class="min-w-0">
                 <div class="truncate text-[15px] font-extrabold tracking-tight leading-tight text-white">
@@ -333,7 +333,7 @@ import { isImageUrl } from './core/utils/image-upload.util';
                 <p class="mt-0.5 flex items-center gap-1.5 truncate text-[11px] sm:text-xs font-medium text-slate-500">
                   <span class="inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 shrink-0"></span>
                   <span class="truncate">
-                    {{ isGlobalAdminRoute() ? 'Administration Globale UniformApp' : (workflowStore.selectedClient()?.name || 'Uniforme School') }}
+                    {{ isGlobalAdminRoute() ? 'Administration Globale BidLab' : (workflowStore.selectedClient()?.name || 'BidLab') }}
                   </span>
                 </p>
               </div>

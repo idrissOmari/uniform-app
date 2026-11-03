@@ -728,7 +728,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
 
     private static String extractInitials(String name) {
         if (name == null || name.isBlank()) {
-            return "UA";
+            return "BL";
         }
         String[] tokens = name.trim().split("\\s+");
         StringBuilder sb = new StringBuilder();
@@ -740,7 +740,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
                 }
             }
         }
-        return sb.isEmpty() ? "UA" : sb.toString();
+        return sb.isEmpty() ? "BL" : sb.toString();
     }
 
     private static String describeVisualSnapshot(String front, String back) {

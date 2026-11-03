@@ -1383,7 +1383,7 @@ export class UniformWorkflowStore {
       return;
     }
     this._lastProblem.set({
-      type: 'https://uniform-app.local/problems/network-error',
+      type: 'https://bidlab.ma/problems/network-error',
       title: 'Erreur de communication API',
       status: err instanceof HttpErrorResponse ? err.status : 500,
       detail: err instanceof Error ? err.message : 'Erreur inattendue',

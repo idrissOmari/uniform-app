@@ -296,7 +296,7 @@ public class AdminClientCatalogResource {
             }
             return new ResolvedSupplier(null, supplierName.trim());
         }
-        return new ResolvedSupplier(null, "Atelier UniformApp");
+        return new ResolvedSupplier(null, "Atelier BidLab");
     }
 
     @DELETE

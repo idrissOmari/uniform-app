@@ -38,14 +38,14 @@ public class DemoDataInitializer {
 
         ensureUserWithPassword(
                 "admin",
-                "admin@uniform-app.local",
+                "admin@bidlab.ma",
                 "Administrateur Principal",
                 "admin",
                 UserRole.ROLE_ADMIN
         );
         ensureUserWithPassword(
                 "operateur",
-                "sara.elamrani@uniform-school.ma",
+                "sara.elamrani@bidlab.ma",
                 "Sara El Amrani",
                 "operateur",
                 UserRole.ROLE_USER

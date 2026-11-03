@@ -1281,7 +1281,7 @@ export class AdminClientsListComponent {
                         class="flex items-center gap-1 cursor-pointer select-none hover:text-indigo-700"
                         (click)="toggleColumnSort('name')"
                       >
-                        <span>Type UniformApp & Produit</span>
+                        <span>Type BidLab & Produit</span>
                         <span class="text-indigo-600">{{ getSortIndicator('name') }}</span>
                       </div>
                       <input
@@ -3452,7 +3452,7 @@ export class AdminCatalogListComponent {
     const payload = {
       productType: raw.productType,
       supplierId: chosenSupplier ? chosenSupplier.id : raw.supplierId || null,
-      supplierName: chosenSupplier ? chosenSupplier.name : 'Atelier UniformApp',
+      supplierName: chosenSupplier ? chosenSupplier.name : 'Atelier BidLab',
       availableSizes: this.selectedProductSizes().join(','),
       referenceCode: raw.referenceCode,
       name: raw.name,

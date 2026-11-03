@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # ==============================================================================
-# UniformApp — Déploiement 100% Cloud Autonome sur Cloudflare (Pages + D1 + Edge API)
+# BidLab (bidlab.ma) — Déploiement 100% Cloud Autonome sur Cloudflare (Pages + D1 + Edge API)
 # Aucun serveur local (ni Quarkus, ni MySQL, ni tunnel cloudflared) n'est requis !
 # ==============================================================================
 set -e
@@ -13,7 +13,7 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 DIST_BROWSER_DIR="$FRONTEND_DIR/dist/uniform-app-frontend/browser"
 
 echo "======================================================================"
-echo "☁️  Déploiement 100% Cloud Autonome de UniformApp (Cloudflare Pages + D1)"
+echo "☁️  Déploiement 100% Cloud Autonome de BidLab (Cloudflare Pages + D1)"
 echo "======================================================================"
 
 # 1. Connexion au compte Cloudflare si nécessaire

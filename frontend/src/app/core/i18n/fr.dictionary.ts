@@ -1,6 +1,6 @@
 export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   // Application & Navigation
-  'app.title': 'Uniforme School',
+  'app.title': 'BidLab',
   'app.subtitle': 'Agent école',
   'app.subtitleAdmin': 'Administration',
   'nav.dashboard': 'Tableau de bord',
@@ -154,10 +154,10 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   RESOURCE_NOT_FOUND: 'Ressource introuvable',
 
   // Authentification (/login)
-  'auth.login.title': 'Connexion à UNIFORM-APP',
+  'auth.login.title': 'Connexion à BidLab',
   'auth.login.subtitle': 'Authentifiez-vous pour accéder à votre espace métier selon votre profil',
   'auth.login.identifierLabel': 'Identifiant ou Adresse Email',
-  'auth.login.identifierPlaceholder': 'ex: admin ou utilisateur@ecole.ma',
+  'auth.login.identifierPlaceholder': 'ex: admin ou utilisateur@bidlab.ma',
   'auth.login.passwordLabel': 'Mot de passe',
   'auth.login.submit': 'Se connecter',
   'auth.login.submitting': 'Vérification des identifiants...',
@@ -168,7 +168,7 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
 
   // Activation d'invitation (/accept-invitation)
   'invitation.title': 'Activation de votre compte',
-  'invitation.subtitle': 'Invitation par email UNIFORM-APP',
+  'invitation.subtitle': 'Invitation par email BidLab',
   'invitation.verifying': "Vérification du jeton d'invitation...",
   'invitation.invalidTitle': 'Invitation invalide ou expirée',
   'invitation.backToLogin': 'Retour à la connexion',

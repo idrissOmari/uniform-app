@@ -105,12 +105,7 @@ export class B2cExcelExportService {
         const pkgQty = buyerLines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
         const pkgCash = buyerLines.reduce((sum, l) => sum + Number(l.lineCashAmount || 0), 0);
         const allDelivered = buyerLines.every((l) => l.lineStatus === 'DELIVERED');
-        const someDelivered = buyerLines.some((l) => l.lineStatus === 'DELIVERED');
-        const deliveryStatus = allDelivered
-          ? 'Remis au client'
-          : someDelivered
-            ? 'Partiellement remis'
-            : 'En attente de remise';
+        const deliveryStatus = allDelivered ? 'Distribuée au client' : 'À distribuer au client';
 
         grandTotalUnits += pkgQty;
         grandTotalCash += pkgCash;
@@ -779,3 +774,4 @@ export class B2cExcelExportService {
     }
   }
 }
+

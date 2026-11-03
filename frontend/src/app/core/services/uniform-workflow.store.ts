@@ -1178,6 +1178,14 @@ export class UniformWorkflowStore {
           if (this.authStore.isAdmin()) {
             this.refreshClientStocks();
           }
+          const buyerName = pendingLines[0]?.buyerFullName ?? 'client';
+          const totalUnitsDelivered = pendingLines.reduce(
+            (sum, l) => sum + Number(l.quantity || 0),
+            0
+          );
+          this._lastStockNotice.set(
+            `Commande distribuée au client ${buyerName} (${totalUnitsDelivered} article(s) déstocké(s) du stock établissement).`
+          );
           onCompleted?.();
         },
         error: (err: unknown) => {

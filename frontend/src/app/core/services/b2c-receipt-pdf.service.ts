@@ -468,9 +468,7 @@ export class B2cReceiptPdfGeneratorService {
 
       ctx.fillStyle = '#64748B';
       ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      const lineStatusBadge =
-        line.lineStatus === 'DELIVERED' ? '✓ Article remis' : '⏳ À retirer au comptoir';
-      ctx.fillText(`Reçu ligne : ${line.receiptNumber}  •  ${lineStatusBadge}`, colDescX, rY + 72);
+      ctx.fillText(`Réf. justificatif : ${line.receiptNumber}`, colDescX, rY + 72);
 
       // Variant: Gender & Size Pill
       const genderFr = this.translateGenderFr(line.gender);

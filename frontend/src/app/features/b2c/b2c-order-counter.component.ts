@@ -417,7 +417,7 @@ export class B2cLinePickupRowComponent {
                   Commande enregistrée avec succès pour {{ recentLines[0].buyerFullName }}
                 </div>
                 <div class="text-xs font-medium text-emerald-800">
-                  {{ recentLines.length }} ligne(s) ajoutée(s) · N° {{ recentLines[0].receiptNumber }} · Le justificatif d'achat officiel est prêt à être imprimé.
+                  {{ recentLines.length }} article(s) enregistré(s) · N° {{ recentLines[0].receiptNumber }} · Le justificatif d'achat officiel est prêt à être imprimé.
                 </div>
               </div>
             </div>
@@ -519,15 +519,15 @@ export class B2cLinePickupRowComponent {
             </div>
           </div>
 
-          <!-- 3 INDICATEURS ESSENTIELS (SANS STOCK POUR L'OPÉRATEUR) -->
+          <!-- 3 INDICATEURS ESSENTIELS (DISTRIBUTION PAR CLIENT) -->
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div class="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
               <div class="text-xs font-medium text-slate-400">Volume de la commande globale</div>
               <div class="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900">
-                {{ order.totalQuantity }} article(s) · {{ order.lines.length }} ligne(s)
+                {{ buyerPackages().length }} client(s) · {{ order.totalQuantity }} article(s)
               </div>
               <div class="mt-1.5 text-xs font-semibold text-[#16803c]">
-                Articles commandés pour {{ workflowStore.selectedClient()?.name }}
+                Commandes clients pour {{ workflowStore.selectedClient()?.name }}
               </div>
             </div>
 
@@ -542,12 +542,12 @@ export class B2cLinePickupRowComponent {
             </div>
 
             <div class="rounded-2xl border border-slate-200/70 bg-white p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
-              <div class="text-xs font-medium text-slate-400">Suivi de la distribution</div>
+              <div class="text-xs font-medium text-slate-400">Suivi de la distribution par client</div>
               <div class="mt-1.5 text-2xl font-extrabold tracking-tight text-slate-900">
-                {{ deliveredCount() }} / {{ order.lines.length }} distribuée(s)
+                {{ deliveredClientsCount() }} / {{ buyerPackages().length }} client(s) distribué(s)
               </div>
               <div class="mt-1.5 text-xs font-medium text-amber-700">
-                {{ pendingPickupCount() }} ligne(s) en attente de remise
+                {{ pendingClientsCount() }} client(s) en attente de remise
               </div>
             </div>
           </div>
@@ -561,7 +561,7 @@ export class B2cLinePickupRowComponent {
                     Avancement des commandes & Compteur par Section / Classe
                   </h3>
                   <p class="text-xs text-slate-500">
-                    Chaque ligne ajoutée à la commande globale décrémente automatiquement le compteur de la section impactée.
+                    Chaque commande client enregistrée décrémente automatiquement le compteur de la section impactée.
                   </p>
                 </div>
                 <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-[#163672]">
@@ -676,22 +676,13 @@ export class B2cLinePickupRowComponent {
                       <div class="flex flex-wrap items-center gap-1.5">
                         @for (line of pkg.lines; track line.id) {
                           <span
-                            class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold"
-                            [class.border-emerald-200]="line.lineStatus === 'DELIVERED'"
-                            [class.bg-emerald-50/70]="line.lineStatus === 'DELIVERED'"
-                            [class.text-emerald-900]="line.lineStatus === 'DELIVERED'"
-                            [class.border-indigo-100]="line.lineStatus !== 'DELIVERED'"
-                            [class.bg-white]="line.lineStatus !== 'DELIVERED'"
-                            [class.text-[#163672]]="line.lineStatus !== 'DELIVERED'"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-100 bg-white px-2.5 py-1 text-xs font-semibold text-[#163672]"
                           >
                             <span class="font-extrabold">{{ line.quantity }}×</span>
                             <span>{{ resolveCatalogItemName(line.catalogItemId) }}</span>
                             <span class="text-slate-500">
                               ({{ ('gender.' + line.gender) | t }} · {{ ('size.' + line.size) | t }})
                             </span>
-                            @if (line.lineStatus === 'DELIVERED') {
-                              <span class="text-emerald-600 font-bold" title="Article remis">✓</span>
-                            }
                           </span>
                         }
                       </div>
@@ -714,10 +705,20 @@ export class B2cLinePickupRowComponent {
                         [class.bg-[#fef3c7]]="!pkg.allDelivered"
                         [class.text-[#92400e]]="!pkg.allDelivered"
                       >
-                        {{ pkg.allDelivered ? 'Colis remis' : 'À distribuer' }}
+                        {{ pkg.allDelivered ? 'Distribuée au client' : 'À distribuer au client' }}
                       </span>
 
                       <div class="flex flex-wrap items-center gap-2">
+                        @if (order.status === 'IN_DELIVERY' && !pkg.allDelivered) {
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1.5 rounded-xl bg-[#16803c] px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#146c32] cursor-pointer"
+                            (click)="workflowStore.deliverBuyerPackage(pkg.lines)"
+                          >
+                            ✅ Distribuer au client
+                          </button>
+                        }
+
                         <button
                           type="button"
                           class="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-[#163672] shadow-2xs transition hover:bg-indigo-50 cursor-pointer"
@@ -735,16 +736,6 @@ export class B2cLinePickupRowComponent {
                         >
                           🔍 Détail
                         </button>
-
-                        @if (order.status === 'IN_DELIVERY' && !pkg.allDelivered) {
-                          <button
-                            type="button"
-                            class="inline-flex items-center gap-1 rounded-xl bg-[#16803c] px-3 py-1.5 text-xs font-bold text-white shadow-2xs transition hover:bg-[#146c32] cursor-pointer"
-                            (click)="workflowStore.deliverBuyerPackage(pkg.lines)"
-                          >
-                            ✅ Remettre au client
-                          </button>
-                        }
                       </div>
                     </div>
                   </div>
@@ -834,21 +825,12 @@ export class B2cLinePickupRowComponent {
                           {{ line.quantity }}× {{ resolveCatalogItemName(line.catalogItemId) }}
                         </div>
                         <div class="text-xs text-slate-500">
-                          {{ ('gender.' + line.gender) | t }} — Taille {{ ('size.' + line.size) | t }} · Reçu {{ line.receiptNumber }}
+                          {{ ('gender.' + line.gender) | t }} — Taille {{ ('size.' + line.size) | t }}
                         </div>
                       </div>
                       <div class="flex items-center gap-2.5">
                         <span class="font-bold text-slate-900">
                           {{ line.lineCashAmount | number: '1.2-2' }} DH
-                        </span>
-                        <span
-                          class="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                          [class.bg-[#fef3c7]]="line.lineStatus === 'PENDING_PICKUP'"
-                          [class.text-[#92400e]]="line.lineStatus === 'PENDING_PICKUP'"
-                          [class.bg-[#dcfce7]]="line.lineStatus === 'DELIVERED'"
-                          [class.text-[#15803d]]="line.lineStatus === 'DELIVERED'"
-                        >
-                          {{ line.lineStatus === 'DELIVERED' ? 'Remis' : 'À remettre' }}
                         </span>
                       </div>
                     </div>
@@ -864,7 +846,7 @@ export class B2cLinePickupRowComponent {
               </div>
 
               <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
-                <span class="text-xs font-semibold text-slate-600">Statut global du colis client :</span>
+                <span class="text-xs font-semibold text-slate-600">Statut de distribution du client :</span>
                 <span
                   class="rounded-full px-3 py-1 text-xs font-bold"
                   [class.bg-[#fef3c7]]="!buyerAllDelivered"
@@ -872,7 +854,7 @@ export class B2cLinePickupRowComponent {
                   [class.bg-[#dcfce7]]="buyerAllDelivered"
                   [class.text-[#15803d]]="buyerAllDelivered"
                 >
-                  {{ buyerAllDelivered ? 'Colis 100% remis au client' : 'En attente de distribution' }}
+                  {{ buyerAllDelivered ? 'Distribuée au client' : 'En attente de distribution au client' }}
                 </span>
               </div>
             </div>
@@ -892,7 +874,7 @@ export class B2cLinePickupRowComponent {
                   class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white hover:bg-[#146c32] cursor-pointer"
                   (click)="confirmBuyerPackageDeliveryFromDetail(buyerLines)"
                 >
-                  ✅ Confirmer la remise au client
+                  ✅ Distribuer la commande au client
                 </button>
               }
 
@@ -1454,21 +1436,17 @@ export class B2cOrderCounterComponent {
     return full.split(/\s+/)[0];
   });
 
-  readonly pendingPickupCount = computed<number>(() => {
-    const order = this.workflowStore.activeB2cOrder();
-    if (!order) {
-      return 0;
-    }
-    return order.lines.filter((l) => l.lineStatus === 'PENDING_PICKUP').length;
-  });
+  readonly pendingClientsCount = computed<number>(() =>
+    this.buyerPackages().filter((p) => !p.allDelivered).length
+  );
 
-  readonly deliveredCount = computed<number>(() => {
-    const order = this.workflowStore.activeB2cOrder();
-    if (!order) {
-      return 0;
-    }
-    return order.lines.filter((l) => l.lineStatus === 'DELIVERED').length;
-  });
+  readonly deliveredClientsCount = computed<number>(() =>
+    this.buyerPackages().filter((p) => p.allDelivered).length
+  );
+
+  readonly pendingPickupCount = computed<number>(() => this.pendingClientsCount());
+
+  readonly deliveredCount = computed<number>(() => this.deliveredClientsCount());
 
   readonly totalPendingPickupUnits = computed<number>(() => {
     const order = this.workflowStore.activeB2cOrder();
@@ -1665,14 +1643,18 @@ export class B2cOrderCounterComponent {
   }
 
   getOrderedCountForSection(section: ClientSectionResponse): number {
-    const lines = this.workflowStore.activeB2cOrder()?.lines ?? [];
-    return lines.filter(
-      (l) =>
-        (l.sectionId && l.sectionId === section.id) ||
-        (!l.sectionId &&
-          l.sectionName &&
-          l.sectionName.trim().toLowerCase() === section.name.trim().toLowerCase())
-    ).length;
+    return this.buyerPackages().filter((pkg) => {
+      const firstLine = pkg.lines[0];
+      if (!firstLine) {
+        return false;
+      }
+      return (
+        (firstLine.sectionId && firstLine.sectionId === section.id) ||
+        (!firstLine.sectionId &&
+          pkg.sectionName &&
+          pkg.sectionName.trim().toLowerCase() === section.name.trim().toLowerCase())
+      );
+    }).length;
   }
 
   getRemainingCapacityForSection(section: ClientSectionResponse): number {

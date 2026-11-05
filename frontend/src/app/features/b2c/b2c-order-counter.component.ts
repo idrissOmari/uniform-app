@@ -413,10 +413,12 @@ export class B2cLinePickupRowComponent {
               🖨️ Imprimer Flyer Catalogue (PDF)
             </button>
           </div>
+        }
 
-          <!-- =============================================================== -->
-          <!-- COMPTEUR DE CAISSE OPÉRATEUR (LIÉ À CHAQUE ÉTABLISSEMENT)       -->
-          <!-- =============================================================== -->
+        <!-- =============================================================== -->
+        <!-- COMPTEUR DE CAISSE (VISIBLE OPÉRATEUR & ADMIN, RESET ADMIN SEUL) -->
+        <!-- =============================================================== -->
+        @if (workflowStore.selectedClient(); as activeEstablishment) {
           @let counterState = workflowStore.activeClientCashCounter();
           @let caisse = cashCounterMetrics();
           <div class="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/80 via-white to-indigo-50/40 p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.12)]">
@@ -484,14 +486,16 @@ export class B2cLinePickupRowComponent {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-2xs transition hover:bg-rose-50 cursor-pointer"
-                  (click)="showResetCashCounterModal.set(true)"
-                >
-                  <span>🔄</span>
-                  <span>Remettre à zéro le compteur</span>
-                </button>
+                @if (authStore.isAdmin()) {
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-2xs transition hover:bg-rose-50 cursor-pointer"
+                    (click)="showResetCashCounterModal.set(true)"
+                  >
+                    <span>🔄</span>
+                    <span>Remettre à zéro le compteur</span>
+                  </button>
+                }
               </div>
             </div>
           </div>

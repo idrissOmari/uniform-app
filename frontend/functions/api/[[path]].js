@@ -1383,10 +1383,12 @@ export async function onRequest(context) {
     }
 
     if (isReset && method === 'POST') {
+      const forbidden = assertAdmin(actor, path, origin);
+      if (forbidden) return forbidden;
       const updatedCounter = {
         clientId,
         resetAt: new Date().toISOString(),
-        resetByFullName: actor?.fullName || actor?.username || 'Opérateur',
+        resetByFullName: actor?.fullName || actor?.username || 'Administrateur',
         lastResetAmount: round2(body?.lastResetAmount ?? existingCounter.lastResetAmount ?? 0),
         lastResetOrdersCount: Math.max(0, Number(body?.lastResetOrdersCount ?? 0)),
         lastResetUnitsCount: Math.max(0, Number(body?.lastResetUnitsCount ?? 0)),

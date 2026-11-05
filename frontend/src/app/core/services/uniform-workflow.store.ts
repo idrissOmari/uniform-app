@@ -374,6 +374,9 @@ export class UniformWorkflowStore {
     currentUnitsCount: number,
     onCompleted?: () => void
   ): void {
+    if (!this.authStore.isAdmin()) {
+      return;
+    }
     const clientId = this._selectedClientId();
     const client = this.selectedClient();
     if (!clientId) {

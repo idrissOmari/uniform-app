@@ -447,13 +447,6 @@ export class B2cLinePickupRowComponent {
                       Cumul des encaissements espèces depuis l'ouverture de la caisse pour cet établissement.
                     }
                   </p>
-                  @if ((counterState?.resetCount ?? 0) > 0) {
-                    <div class="mt-1.5 inline-flex flex-wrap items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
-                      <span>📌 Dernier arrêté de caisse :</span>
-                      <span class="font-extrabold text-slate-900">{{ counterState?.lastResetAmount | number: '1.2-2' }} DH</span>
-                      <span>({{ counterState?.lastResetOrdersCount }} commande(s) · {{ counterState?.lastResetUnitsCount }} art.)</span>
-                    </div>
-                  }
                 </div>
               </div>
 
@@ -498,6 +491,51 @@ export class B2cLinePickupRowComponent {
                 }
               </div>
             </div>
+
+            <!-- Historique des 3 derniers arrêtés de caisse -->
+            @if ((counterState?.recentResets?.length ?? 0) > 0) {
+              <div class="mt-4 border-t border-emerald-200/70 pt-3.5">
+                <div class="flex items-center justify-between gap-2 mb-2.5">
+                  <div class="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-slate-600">
+                    <span>📌</span>
+                    <span>Historique des 3 derniers arrêtés de caisse</span>
+                  </div>
+                  <span class="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+                    {{ counterState?.resetCount }} arrêté(s) au total
+                  </span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  @for (entry of (counterState?.recentResets ?? []).slice(0, 3); track entry.resetAt + '-' + $index; let idx = $index) {
+                    <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-white/90 px-3.5 py-2.5 shadow-2xs">
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          <span class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-[10px] font-extrabold text-[#15803d]">
+                            #{{ idx + 1 }}
+                          </span>
+                          <span class="truncate text-xs font-bold text-slate-800">
+                            {{ entry.resetAt | date: 'dd/MM/yyyy à HH:mm' }}
+                          </span>
+                        </div>
+                        <div class="mt-1 truncate text-[11px] font-medium text-slate-500">
+                          {{ entry.ordersCount }} cmd · {{ entry.unitsCount }} art.
+                          @if (entry.resetByFullName) {
+                            <span>· par {{ entry.resetByFullName }}</span>
+                          }
+                        </div>
+                      </div>
+                      <div class="shrink-0 text-right">
+                        <div class="text-sm font-extrabold text-slate-900">
+                          {{ entry.amount | number: '1.2-2' }} DH
+                        </div>
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+                          Clôturé
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           </div>
         }
 

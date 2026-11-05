@@ -127,6 +127,7 @@ export class UniformWorkflowStore {
         lastResetOrdersCount: 0,
         lastResetUnitsCount: 0,
         resetCount: 0,
+        recentResets: [],
       }
     );
   });
@@ -385,15 +386,42 @@ export class UniformWorkflowStore {
     this.clearProblem();
     const prevCounter = this.activeClientCashCounter();
     const nowIso = new Date().toISOString();
-    const actorName = this.authStore.currentFullName() || 'Opérateur';
+    const actorName = this.authStore.currentFullName() || 'Administrateur';
+    const roundedAmount = Math.round(currentAmount * 100) / 100;
+    const prevHistory =
+      prevCounter?.recentResets && prevCounter.recentResets.length > 0
+        ? prevCounter.recentResets
+        : prevCounter?.resetAt
+          ? [
+              {
+                resetAt: prevCounter.resetAt,
+                resetByFullName: prevCounter.resetByFullName || 'Administrateur',
+                amount: prevCounter.lastResetAmount,
+                ordersCount: prevCounter.lastResetOrdersCount,
+                unitsCount: prevCounter.lastResetUnitsCount,
+              },
+            ]
+          : [];
+    const nextHistory = [
+      {
+        resetAt: nowIso,
+        resetByFullName: actorName,
+        amount: roundedAmount,
+        ordersCount: currentOrdersCount,
+        unitsCount: currentUnitsCount,
+      },
+      ...prevHistory,
+    ].slice(0, 3);
+
     const optimisticCounter: CashCounterResponse = {
       clientId,
       resetAt: nowIso,
       resetByFullName: actorName,
-      lastResetAmount: Math.round(currentAmount * 100) / 100,
+      lastResetAmount: roundedAmount,
       lastResetOrdersCount: currentOrdersCount,
       lastResetUnitsCount: currentUnitsCount,
       resetCount: (prevCounter?.resetCount ?? 0) + 1,
+      recentResets: nextHistory,
     };
 
     this._cashCountersByClient.update((prev) => {

@@ -1376,7 +1376,21 @@ export async function onRequest(context) {
       lastResetOrdersCount: 0,
       lastResetUnitsCount: 0,
       resetCount: 0,
+      recentResets: [],
     };
+    if (!Array.isArray(existingCounter.recentResets)) {
+      existingCounter.recentResets = existingCounter.resetAt
+        ? [
+            {
+              resetAt: existingCounter.resetAt,
+              resetByFullName: existingCounter.resetByFullName || 'Administrateur',
+              amount: round2(existingCounter.lastResetAmount || 0),
+              ordersCount: Number(existingCounter.lastResetOrdersCount || 0),
+              unitsCount: Number(existingCounter.lastResetUnitsCount || 0),
+            },
+          ]
+        : [];
+    }
 
     if (!isReset && method === 'GET') {
       return jsonResponse(existingCounter, 200, origin);
@@ -1385,14 +1399,28 @@ export async function onRequest(context) {
     if (isReset && method === 'POST') {
       const forbidden = assertAdmin(actor, path, origin);
       if (forbidden) return forbidden;
+      const nowIso = new Date().toISOString();
+      const actorName = actor?.fullName || actor?.username || 'Administrateur';
+      const amount = round2(body?.lastResetAmount ?? existingCounter.lastResetAmount ?? 0);
+      const ordersCount = Math.max(0, Number(body?.lastResetOrdersCount ?? 0));
+      const unitsCount = Math.max(0, Number(body?.lastResetUnitsCount ?? 0));
+      const newEntry = {
+        resetAt: nowIso,
+        resetByFullName: actorName,
+        amount,
+        ordersCount,
+        unitsCount,
+      };
+      const recentResets = [newEntry, ...(existingCounter.recentResets || [])].slice(0, 3);
       const updatedCounter = {
         clientId,
-        resetAt: new Date().toISOString(),
-        resetByFullName: actor?.fullName || actor?.username || 'Administrateur',
-        lastResetAmount: round2(body?.lastResetAmount ?? existingCounter.lastResetAmount ?? 0),
-        lastResetOrdersCount: Math.max(0, Number(body?.lastResetOrdersCount ?? 0)),
-        lastResetUnitsCount: Math.max(0, Number(body?.lastResetUnitsCount ?? 0)),
+        resetAt: nowIso,
+        resetByFullName: actorName,
+        lastResetAmount: amount,
+        lastResetOrdersCount: ordersCount,
+        lastResetUnitsCount: unitsCount,
         resetCount: Number(existingCounter.resetCount || 0) + 1,
+        recentResets,
       };
       state.cashCounters[clientId] = updatedCounter;
       await saveState(env, state);

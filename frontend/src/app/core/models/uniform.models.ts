@@ -649,6 +649,14 @@ export interface B2cOrderDetailResponse extends B2cOrderSummaryResponse {
   readonly lines: readonly B2cOrderLineResponse[];
 }
 
+export interface CashCounterHistoryEntry {
+  readonly resetAt: string;
+  readonly resetByFullName: string;
+  readonly amount: number;
+  readonly ordersCount: number;
+  readonly unitsCount: number;
+}
+
 export interface CashCounterResponse {
   readonly clientId: string;
   readonly resetAt: string | null;
@@ -657,6 +665,7 @@ export interface CashCounterResponse {
   readonly lastResetOrdersCount: number;
   readonly lastResetUnitsCount: number;
   readonly resetCount: number;
+  readonly recentResets?: readonly CashCounterHistoryEntry[];
 }
 
 export interface B2bPurchaseOrderLineResponse {

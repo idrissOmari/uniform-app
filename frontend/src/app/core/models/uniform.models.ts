@@ -494,7 +494,8 @@ export type ErrorCode =
   | 'MOQ_NOT_REACHED'
   | 'INSUFFICIENT_PRIVILEGES'
   | 'VALIDATION_ERROR'
-  | 'RESOURCE_NOT_FOUND';
+  | 'RESOURCE_NOT_FOUND'
+  | 'CASH_COUNTER_EMPTY';
 
 export interface ClientSectionInput {
   readonly id?: string | null;

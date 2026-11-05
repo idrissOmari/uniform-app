@@ -378,6 +378,20 @@ export class UniformWorkflowStore {
     if (!this.authStore.isAdmin()) {
       return;
     }
+    const roundedAmount = Math.round(currentAmount * 100) / 100;
+    if (roundedAmount <= 0) {
+      this._lastProblem.set({
+        type: 'https://uniform.app/problems/cash-counter-empty',
+        title: 'Remise à zéro impossible',
+        status: 422,
+        detail:
+          'La remise à zéro du compteur de caisse n\'est possible que lorsque le total en caisse est strictement supérieur à 0,00 DH.',
+        instance: '/api/v1/clients/cash-counter/reset',
+        errorCode: 'CASH_COUNTER_EMPTY',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
     const clientId = this._selectedClientId();
     const client = this.selectedClient();
     if (!clientId) {
@@ -387,7 +401,6 @@ export class UniformWorkflowStore {
     const prevCounter = this.activeClientCashCounter();
     const nowIso = new Date().toISOString();
     const actorName = this.authStore.currentFullName() || 'Administrateur';
-    const roundedAmount = Math.round(currentAmount * 100) / 100;
     const prevHistory =
       prevCounter?.recentResets && prevCounter.recentResets.length > 0
         ? prevCounter.recentResets

@@ -482,8 +482,10 @@ export class B2cLinePickupRowComponent {
                 @if (authStore.isAdmin()) {
                   <button
                     type="button"
-                    class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-2xs transition hover:bg-rose-50 cursor-pointer"
-                    (click)="showResetCashCounterModal.set(true)"
+                    [disabled]="caisse.cashAmount <= 0"
+                    [title]="caisse.cashAmount <= 0 ? 'La remise à zéro nécessite un montant en caisse supérieur à 0,00 DH' : 'Remettre à zéro le compteur de caisse'"
+                    class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-2xs transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-white cursor-pointer"
+                    (click)="caisse.cashAmount > 0 && showResetCashCounterModal.set(true)"
                   >
                     <span>🔄</span>
                     <span>Remettre à zéro le compteur</span>
@@ -1240,7 +1242,8 @@ export class B2cLinePickupRowComponent {
               </button>
               <button
                 type="button"
-                class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#146c32] cursor-pointer"
+                [disabled]="caisse.cashAmount <= 0"
+                class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#146c32] disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
                 (click)="confirmResetCashCounter()"
               >
                 🔄 Confirmer la remise à zéro
@@ -2304,6 +2307,10 @@ export class B2cOrderCounterComponent {
 
   confirmResetCashCounter(): void {
     const metrics = this.cashCounterMetrics();
+    if (metrics.cashAmount <= 0) {
+      this.showResetCashCounterModal.set(false);
+      return;
+    }
     this.workflowStore.resetActiveClientCashCounter(
       metrics.cashAmount,
       metrics.clientsCount,

@@ -1401,7 +1401,17 @@ export async function onRequest(context) {
       if (forbidden) return forbidden;
       const nowIso = new Date().toISOString();
       const actorName = actor?.fullName || actor?.username || 'Administrateur';
-      const amount = round2(body?.lastResetAmount ?? existingCounter.lastResetAmount ?? 0);
+      const amount = round2(body?.lastResetAmount ?? 0);
+      if (!(amount > 0)) {
+        return problemResponse(
+          422,
+          'CASH_COUNTER_EMPTY',
+          'Remise à zéro impossible',
+          'La remise à zéro du compteur de caisse n\'est possible que lorsque le montant en caisse est supérieur à 0,00 DH.',
+          path,
+          origin
+        );
+      }
       const ordersCount = Math.max(0, Number(body?.lastResetOrdersCount ?? 0));
       const unitsCount = Math.max(0, Number(body?.lastResetUnitsCount ?? 0));
       const newEntry = {

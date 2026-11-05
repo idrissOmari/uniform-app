@@ -52,7 +52,7 @@ echo "🚀 Étape 4/4 : Publication sur Cloudflare Pages (100% Cloud sans dépen
 npx --yes wrangler pages deploy "$DIST_BROWSER_DIR" --project-name="$PROJECT_NAME" --branch=main --commit-dirty=true
 
 echo "======================================================================"
-echo "✅ Déploiement 100% Cloud terminé sur https://uniform-app.pages.dev !"
+echo "✅ Déploiement 100% Cloud terminé sur https://bidlab.ma (et https://uniform-app.pages.dev) !"
 echo "   Votre application fonctionne désormais de manière totalement autonome"
 echo "   même lorsque votre Mac est éteint."
 echo "======================================================================"

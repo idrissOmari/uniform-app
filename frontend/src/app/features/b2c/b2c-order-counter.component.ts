@@ -18,6 +18,7 @@ import {
   ALL_PRODUCT_TYPES,
   AddB2cOrderLineRequest,
   B2cOrderLineResponse,
+  B2cOrderSummaryResponse,
   ClientSectionResponse,
   Gender,
   Size,
@@ -363,7 +364,7 @@ export class B2cLinePickupRowComponent {
         </div>
       } @else {
         <!-- =================================================================== -->
-        <!-- EN-TÊTE INFORMATIONS DE L'ÉTABLISSEMENT + IMPRESSION FLYER CATALOGUE -->
+        <!-- EN-TÊTE INFORMATIONS DE L'ÉTABLISSEMENT + COMPTEUR DE CAISSE         -->
         <!-- (Pour l'Opérateur Comptoir ; l'Admin dispose de la barre d'établissement globale) -->
         <!-- =================================================================== -->
         @if (!authStore.isAdmin() && workflowStore.selectedClient(); as activeEstablishment) {
@@ -373,9 +374,21 @@ export class B2cLinePickupRowComponent {
                 <span class="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Établissement :
                 </span>
-                <h2 class="text-base font-extrabold text-slate-900">
-                  {{ activeEstablishment.name }}
-                </h2>
+                @if (workflowStore.clients().length > 1) {
+                  <select
+                    class="rounded-xl border border-indigo-200 bg-indigo-50/40 px-3 py-1.5 text-sm font-extrabold text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
+                    [value]="activeEstablishment.id"
+                    (change)="workflowStore.selectClient($any($event.target).value)"
+                  >
+                    @for (c of workflowStore.clients(); track c.id) {
+                      <option [value]="c.id">{{ c.name }}</option>
+                    }
+                  </select>
+                } @else {
+                  <h2 class="text-base font-extrabold text-slate-900">
+                    {{ activeEstablishment.name }}
+                  </h2>
+                }
                 <span class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-[#163672]">
                   {{ ('clientType.short.' + (activeEstablishment.clientType || 'SECONDARY_SCHOOL')) | t }}
                 </span>
@@ -398,6 +411,104 @@ export class B2cLinePickupRowComponent {
               (click)="workflowStore.downloadCatalogFlyerPdf()"
             >
               🖨️ Imprimer Flyer Catalogue (PDF)
+            </button>
+          </div>
+
+          <!-- =============================================================== -->
+          <!-- COMPTEUR DE CAISSE OPÉRATEUR (LIÉ À CHAQUE ÉTABLISSEMENT)       -->
+          <!-- =============================================================== -->
+          @let counterState = workflowStore.activeClientCashCounter();
+          @let caisse = cashCounterMetrics();
+          <div class="rounded-2xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/80 via-white to-indigo-50/40 p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.12)]">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div class="flex items-start gap-3.5">
+                <div class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#16803c] text-xl text-white shadow-sm">
+                  💰
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-base font-extrabold text-slate-900">
+                      Compteur de Caisse — {{ activeEstablishment.name }}
+                    </h3>
+                    <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-extrabold text-[#15803d]">
+                      Suivi caisse établissement
+                    </span>
+                  </div>
+                  <p class="mt-0.5 text-xs text-slate-600">
+                    @if (counterState?.resetAt) {
+                      Compteur actif depuis la dernière remise à zéro du
+                      <span class="font-bold text-slate-900">{{ counterState?.resetAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+                      @if (counterState?.resetByFullName) {
+                        <span>(par {{ counterState?.resetByFullName }})</span>
+                      }
+                    } @else {
+                      Cumul des encaissements espèces depuis l'ouverture de la caisse pour cet établissement.
+                    }
+                  </p>
+                  @if ((counterState?.resetCount ?? 0) > 0) {
+                    <div class="mt-1.5 inline-flex flex-wrap items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      <span>📌 Dernier arrêté de caisse :</span>
+                      <span class="font-extrabold text-slate-900">{{ counterState?.lastResetAmount | number: '1.2-2' }} DH</span>
+                      <span>({{ counterState?.lastResetOrdersCount }} commande(s) · {{ counterState?.lastResetUnitsCount }} art.)</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between lg:justify-end gap-4 border-t border-emerald-200/60 pt-3.5 lg:border-t-0 lg:pt-0">
+                <div class="flex items-center gap-4 sm:gap-6">
+                  <div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      Commandes en caisse
+                    </div>
+                    <div class="mt-0.5 text-lg font-extrabold text-slate-900">
+                      {{ caisse.clientsCount }} commande(s)
+                    </div>
+                    <div class="text-[11px] font-semibold text-slate-500">
+                      {{ caisse.unitsCount }} article(s) encaissé(s)
+                    </div>
+                  </div>
+
+                  <div class="h-10 w-px bg-slate-200"></div>
+
+                  <div>
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-[#15803d]">
+                      Total Caisse Actuel
+                    </div>
+                    <div class="mt-0.5 text-2xl font-extrabold tracking-tight text-[#15803d]">
+                      {{ caisse.cashAmount | number: '1.2-2' }} DH
+                    </div>
+                    <div class="text-[11px] font-semibold text-emerald-700">
+                      Espèces en caisse
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3.5 py-2.5 text-xs font-extrabold text-rose-700 shadow-2xs transition hover:bg-rose-50 cursor-pointer"
+                  (click)="showResetCashCounterModal.set(true)"
+                >
+                  <span>🔄</span>
+                  <span>Remettre à zéro le compteur</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (workflowStore.lastStockNotice(); as notice) {
+          <div class="flex items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50/90 px-4 py-3 text-xs font-bold text-[#163672] shadow-2xs">
+            <div class="flex items-center gap-2">
+              <span>ℹ️</span>
+              <span>{{ notice }}</span>
+            </div>
+            <button
+              type="button"
+              class="rounded-lg p-1 text-indigo-700 hover:bg-indigo-100 cursor-pointer"
+              (click)="workflowStore.clearStockNotice()"
+            >
+              ✕
             </button>
           </div>
         }
@@ -605,13 +716,111 @@ export class B2cLinePickupRowComponent {
             </div>
           }
 
+          <!-- HISTORIQUE DES COMMANDES GLOBALES DE L'ÉTABLISSEMENT (ADMIN) -->
+          @if (authStore.isAdmin() && workflowStore.b2cOrders().length > 0) {
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-3.5">
+                <div>
+                  <h3 class="text-sm font-extrabold text-slate-900">
+                    📜 Historique des Commandes Globales — {{ workflowStore.selectedClient()?.name }}
+                  </h3>
+                  <p class="text-xs text-slate-500">
+                    Consultez l'historique des lots de commandes de l'établissement ou supprimez une commande avec confirmation.
+                  </p>
+                </div>
+                <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-extrabold text-indigo-700">
+                  {{ workflowStore.b2cOrders().length }} lot(s) dans l'historique
+                </span>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th class="px-3.5 py-2.5">N° Commande</th>
+                      <th class="px-3.5 py-2.5">Date de création</th>
+                      <th class="px-3.5 py-2.5">Statut</th>
+                      <th class="px-3.5 py-2.5">Articles</th>
+                      <th class="px-3.5 py-2.5">Total Encaissé</th>
+                      <th class="px-3.5 py-2.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (summary of workflowStore.b2cOrders(); track summary.id) {
+                      <tr
+                        class="border-b border-slate-100 text-xs transition hover:bg-slate-50/80"
+                        [class.bg-indigo-50/40]="summary.id === order.id"
+                      >
+                        <td class="px-3.5 py-3 font-mono font-bold text-slate-900">
+                          <div class="flex items-center gap-2">
+                            <span>{{ summary.orderNumber }}</span>
+                            @if (summary.id === order.id) {
+                              <span class="rounded-full bg-[#163672] px-2 py-0.5 font-sans text-[10px] font-extrabold text-white">
+                                Affichée
+                              </span>
+                            }
+                          </div>
+                        </td>
+                        <td class="px-3.5 py-3 text-slate-600">
+                          {{ summary.createdAt | date: 'dd/MM/yyyy à HH:mm' }}
+                        </td>
+                        <td class="px-3.5 py-3">
+                          <span
+                            class="rounded-full px-2.5 py-0.5 text-[11px] font-bold"
+                            [class.bg-blue-100]="summary.status === 'IN_PROGRESS'"
+                            [class.text-blue-800]="summary.status === 'IN_PROGRESS'"
+                            [class.bg-purple-100]="summary.status === 'IN_PRODUCTION'"
+                            [class.text-purple-800]="summary.status === 'IN_PRODUCTION'"
+                            [class.bg-amber-100]="summary.status === 'IN_DELIVERY'"
+                            [class.text-amber-800]="summary.status === 'IN_DELIVERY'"
+                            [class.bg-emerald-100]="summary.status === 'DELIVERED'"
+                            [class.text-emerald-800]="summary.status === 'DELIVERED'"
+                          >
+                            {{ ('b2cOrderStatus.' + summary.status) | t }}
+                          </span>
+                        </td>
+                        <td class="px-3.5 py-3 font-semibold text-slate-800">
+                          {{ summary.totalQuantity }} article(s)
+                        </td>
+                        <td class="px-3.5 py-3 font-extrabold text-[#15803d]">
+                          {{ summary.totalCashAmount | number: '1.2-2' }} DH
+                        </td>
+                        <td class="px-3.5 py-3 text-right">
+                          <div class="inline-flex items-center justify-end gap-2">
+                            @if (summary.id !== order.id) {
+                              <button
+                                type="button"
+                                class="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-bold text-[#163672] hover:bg-indigo-50 cursor-pointer"
+                                (click)="workflowStore.selectB2cOrder(summary.id)"
+                              >
+                                👁️ Consulter
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              class="rounded-lg border border-rose-200 bg-rose-50/70 px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-100 cursor-pointer"
+                              title="Supprimer cette commande globale"
+                              (click)="orderSummaryToDelete.set(summary)"
+                            >
+                              🗑️ Supprimer
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
           <!-- CARTE TABLEAU COMMANDE GLOBALE (VUE UNIQUE PAR CLIENT FINAL) -->
           @defer {
             <div class="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-[0_2px_12px_rgba(15,23,42,0.04)]">
               <div class="flex flex-wrap items-center justify-between gap-4 pb-5">
                 <div class="flex flex-wrap items-center gap-3">
                   <h3 class="text-base font-bold text-slate-900">
-                    Commandes par Client ({{ buyerPackages().length }})
+                    Historique des Commandes par Client ({{ filteredBuyerPackages().length }} / {{ buyerPackages().length }})
                   </h3>
 
                   @if (workflowStore.b2cOrders().length >= 1) {
@@ -630,6 +839,16 @@ export class B2cLinePickupRowComponent {
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
+                  <div class="relative w-full sm:w-64">
+                    <input
+                      type="search"
+                      placeholder="🔍 Rechercher client, tél, reçu, section..."
+                      class="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs font-medium text-slate-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                      [value]="buyerSearchQuery()"
+                      (input)="buyerSearchQuery.set($any($event.target).value)"
+                    />
+                  </div>
+
                   @if (authStore.isAdmin()) {
                     <button
                       type="button"
@@ -654,7 +873,7 @@ export class B2cLinePickupRowComponent {
 
               <!-- VUE UNIQUE PAR CLIENT FINAL -->
               <div class="space-y-3">
-                @for (pkg of buyerPackages(); track pkg.buyerKey) {
+                @for (pkg of filteredBuyerPackages(); track pkg.buyerKey) {
                   <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 rounded-xl border border-slate-200/80 bg-[#f8fafc] p-4 transition hover:border-indigo-200 hover:bg-slate-50">
                     <div class="space-y-2 min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
@@ -668,6 +887,11 @@ export class B2cLinePickupRowComponent {
                         @if (pkg.sectionName) {
                           <span class="rounded-md bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-[#163672]">
                             Section : {{ pkg.sectionName }}
+                          </span>
+                        }
+                        @if (pkg.createdAt) {
+                          <span class="text-[11px] font-medium text-slate-400">
+                            · 🕒 {{ pkg.createdAt | date: 'dd/MM/yyyy HH:mm' }}
                           </span>
                         }
                       </div>
@@ -736,6 +960,17 @@ export class B2cLinePickupRowComponent {
                         >
                           🔍 Détail
                         </button>
+
+                        @if (authStore.isAdmin()) {
+                          <button
+                            type="button"
+                            class="inline-flex items-center gap-1 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-1.5 text-xs font-bold text-rose-700 shadow-2xs transition hover:bg-rose-100 cursor-pointer"
+                            title="Supprimer la commande de ce client"
+                            (click)="openDeleteBuyerPackageModal(pkg)"
+                          >
+                            🗑️ Supprimer
+                          </button>
+                        }
                       </div>
                     </div>
                   </div>
@@ -878,12 +1113,258 @@ export class B2cLinePickupRowComponent {
                 </button>
               }
 
+              @if (authStore.isAdmin()) {
+                <button
+                  type="button"
+                  class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 cursor-pointer"
+                  (click)="requestDeleteBuyerLinesFromDetail(buyerLines)"
+                >
+                  🗑️ Supprimer la commande
+                </button>
+              }
+
               <button
                 type="button"
                 class="rounded-xl bg-[#163672] px-4 py-2 text-xs font-bold text-white hover:bg-[#0d2554] cursor-pointer"
                 (click)="selectedLineDetail.set(null)"
               >
                 {{ 'common.close' | t }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- =================================================================== -->
+      <!-- POPIN DE CONFIRMATION : REMISE À ZÉRO DU COMPTEUR DE CAISSE         -->
+      <!-- =================================================================== -->
+      @if (showResetCashCounterModal()) {
+        @let caisse = cashCounterMetrics();
+        <div class="ui-modal-backdrop">
+          <div class="ui-modal-panel max-w-md">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-base text-amber-800">
+                  🔄
+                </span>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">
+                    Remettre à zéro le compteur de caisse
+                  </h3>
+                  <p class="text-xs text-slate-500">
+                    {{ workflowStore.selectedClient()?.name }}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                (click)="showResetCashCounterModal.set(false)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-3 text-xs text-slate-600">
+              <p class="leading-relaxed">
+                Confirmez-vous la remise à zéro du compteur de caisse pour l'établissement
+                <strong class="text-slate-900">{{ workflowStore.selectedClient()?.name }}</strong> ?
+              </p>
+
+              <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-slate-600">Montant actuel en caisse :</span>
+                  <span class="text-sm font-extrabold text-[#15803d]">{{ caisse.cashAmount | number: '1.2-2' }} DH</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="font-semibold text-slate-600">Commandes suivies :</span>
+                  <span class="font-bold text-slate-900">{{ caisse.clientsCount }} commande(s) ({{ caisse.unitsCount }} article(s))</span>
+                </div>
+              </div>
+
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                ℹ️ Ce montant sera archivé comme dernier arrêté de caisse et votre compteur repartira immédiatement à
+                <strong>0,00 DH</strong> et <strong>0 commande</strong>. Les commandes clients déjà saisies restent conservées dans la commande globale de l'établissement.
+              </p>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                (click)="showResetCashCounterModal.set(false)"
+              >
+                {{ 'common.cancel' | t }}
+              </button>
+              <button
+                type="button"
+                class="rounded-xl bg-[#16803c] px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-[#146c32] cursor-pointer"
+                (click)="confirmResetCashCounter()"
+              >
+                🔄 Confirmer la remise à zéro
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- =================================================================== -->
+      <!-- POPIN DE CONFIRMATION (ADMIN) : SUPPRESSION D'UNE COMMANDE CLIENT   -->
+      <!-- =================================================================== -->
+      @if (buyerPackageToDelete(); as pkgToDelete) {
+        <div class="ui-modal-backdrop">
+          <div class="ui-modal-panel max-w-md">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-base text-rose-700">
+                  🗑️
+                </span>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">
+                    Supprimer la commande du client
+                  </h3>
+                  <p class="text-xs text-slate-500">
+                    Confirmation de suppression définitive
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                (click)="buyerPackageToDelete.set(null)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-3 text-xs text-slate-600">
+              <p class="leading-relaxed">
+                Êtes-vous sûr de vouloir supprimer la commande du client
+                <strong class="text-slate-900">{{ pkgToDelete.buyerFullName }}</strong> ?
+              </p>
+
+              <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3.5 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500">N° Justificatif :</span>
+                  <span class="font-mono font-bold text-slate-900">{{ pkgToDelete.receiptNumberLabel }}</span>
+                </div>
+                @if (pkgToDelete.sectionName) {
+                  <div class="flex items-center justify-between">
+                    <span class="text-slate-500">Section / Classe :</span>
+                    <span class="font-bold text-[#163672]">{{ pkgToDelete.sectionName }}</span>
+                  </div>
+                }
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500">Volume commandé :</span>
+                  <span class="font-bold text-slate-900">{{ pkgToDelete.totalQuantity }} article(s)</span>
+                </div>
+                <div class="flex items-center justify-between border-t border-rose-200/60 pt-1.5">
+                  <span class="font-semibold text-slate-700">Montant encaissé :</span>
+                  <span class="text-sm font-extrabold text-rose-700">{{ pkgToDelete.totalCashAmount | number: '1.2-2' }} DH</span>
+                </div>
+              </div>
+
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                ⚠️ Cette opération est irréversible. Si cette commande avait déjà été distribuée, les articles correspondants seront automatiquement recrédités dans le stock de l'établissement.
+              </p>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                (click)="buyerPackageToDelete.set(null)"
+              >
+                {{ 'common.cancel' | t }}
+              </button>
+              <button
+                type="button"
+                [disabled]="workflowStore.loading()"
+                class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-40 cursor-pointer"
+                (click)="confirmDeleteBuyerPackage()"
+              >
+                🗑️ Confirmer la suppression
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- =================================================================== -->
+      <!-- POPIN DE CONFIRMATION (ADMIN) : SUPPRESSION D'UNE COMMANDE GLOBALE  -->
+      <!-- =================================================================== -->
+      @if (orderSummaryToDelete(); as orderToDelete) {
+        <div class="ui-modal-backdrop">
+          <div class="ui-modal-panel max-w-md">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-rose-100 text-base text-rose-700">
+                  🗑️
+                </span>
+                <div>
+                  <h3 class="text-base font-bold text-slate-900">
+                    Supprimer la commande globale {{ orderToDelete.orderNumber }}
+                  </h3>
+                  <p class="text-xs text-slate-500">
+                    Confirmation de suppression de l'historique
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                (click)="orderSummaryToDelete.set(null)"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div class="mt-4 space-y-3 text-xs text-slate-600">
+              <p class="leading-relaxed">
+                Confirmez-vous la suppression définitive de la commande globale
+                <strong class="text-slate-900">{{ orderToDelete.orderNumber }}</strong>
+                pour l'établissement <strong class="text-slate-900">{{ workflowStore.selectedClient()?.name }}</strong> ?
+              </p>
+
+              <div class="rounded-xl border border-rose-200 bg-rose-50/60 p-3.5 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500">Date de création :</span>
+                  <span class="font-bold text-slate-900">{{ orderToDelete.createdAt | date: 'dd/MM/yyyy à HH:mm' }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500">Statut :</span>
+                  <span class="font-bold text-slate-900">{{ ('b2cOrderStatus.' + orderToDelete.status) | t }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-slate-500">Total articles :</span>
+                  <span class="font-bold text-slate-900">{{ orderToDelete.totalQuantity }} article(s)</span>
+                </div>
+                <div class="flex items-center justify-between border-t border-rose-200/60 pt-1.5">
+                  <span class="font-semibold text-slate-700">Total espèces :</span>
+                  <span class="text-sm font-extrabold text-rose-700">{{ orderToDelete.totalCashAmount | number: '1.2-2' }} DH</span>
+                </div>
+              </div>
+
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                ⚠️ Toutes les commandes clients rattachées à ce lot seront supprimées. Les articles déjà distribués seront recrédités au stock de l'établissement.
+              </p>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                (click)="orderSummaryToDelete.set(null)"
+              >
+                {{ 'common.cancel' | t }}
+              </button>
+              <button
+                type="button"
+                [disabled]="workflowStore.loading()"
+                class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-40 cursor-pointer"
+                (click)="confirmDeleteGlobalOrder()"
+              >
+                🗑️ Confirmer la suppression
               </button>
             </div>
           </div>
@@ -1338,6 +1819,17 @@ export class B2cOrderCounterComponent {
   readonly itemSelections = signal<Readonly<Record<string, ProductOrderSelection>>>({});
   readonly selectedLineDetail = signal<B2cOrderLineResponse | null>(null);
   readonly groupByBuyerView = signal<boolean>(false);
+  readonly buyerSearchQuery = signal<string>('');
+  readonly showResetCashCounterModal = signal<boolean>(false);
+  readonly buyerPackageToDelete = signal<{
+    readonly buyerFullName: string;
+    readonly receiptNumberLabel: string;
+    readonly sectionName: string | null;
+    readonly totalQuantity: number;
+    readonly totalCashAmount: number;
+    readonly lines: readonly B2cOrderLineResponse[];
+  } | null>(null);
+  readonly orderSummaryToDelete = signal<B2cOrderSummaryResponse | null>(null);
 
   readonly buyerPackages = computed(() => {
     const order = this.workflowStore.activeB2cOrder();
@@ -1351,6 +1843,7 @@ export class B2cOrderCounterComponent {
         buyerFullName: string;
         buyerPhone: string;
         sectionName: string | null;
+        createdAt: string;
         items: string[];
         lines: B2cOrderLineResponse[];
         totalQuantity: number;
@@ -1369,6 +1862,7 @@ export class B2cOrderCounterComponent {
           buyerFullName: line.buyerFullName,
           buyerPhone: line.buyerPhone,
           sectionName: line.sectionName ?? null,
+          createdAt: line.createdAt,
           items: [],
           lines: [],
           totalQuantity: 0,
@@ -1396,6 +1890,51 @@ export class B2cOrderCounterComponent {
           : `${g.lines[0].receiptNumber} (+${g.lines.length - 1})`,
       summaryText: `${g.buyerFullName} : ${g.items.join(', ')}`,
     }));
+  });
+
+  readonly filteredBuyerPackages = computed(() => {
+    const q = this.buyerSearchQuery().trim().toLowerCase();
+    const list = this.buyerPackages();
+    if (!q) {
+      return list;
+    }
+    return list.filter(
+      (pkg) =>
+        pkg.buyerFullName.toLowerCase().includes(q) ||
+        pkg.buyerPhone.toLowerCase().includes(q) ||
+        pkg.receiptNumberLabel.toLowerCase().includes(q) ||
+        (pkg.sectionName ?? '').toLowerCase().includes(q) ||
+        pkg.summaryText.toLowerCase().includes(q)
+    );
+  });
+
+  readonly cashCounterMetrics = computed<{
+    readonly clientsCount: number;
+    readonly unitsCount: number;
+    readonly cashAmount: number;
+  }>(() => {
+    const resetAt = this.workflowStore.activeClientCashCounter()?.resetAt ?? null;
+    const resetTimeMs = resetAt ? Date.parse(resetAt) : 0;
+    const packages = this.buyerPackages();
+
+    const activePackages =
+      resetTimeMs > 0
+        ? packages.filter((pkg) => {
+            const pkgTimeMs = pkg.createdAt ? Date.parse(pkg.createdAt) : 0;
+            return pkgTimeMs > resetTimeMs;
+          })
+        : packages;
+
+    const clientsCount = activePackages.length;
+    const unitsCount = activePackages.reduce((sum, p) => sum + p.totalQuantity, 0);
+    const cashAmount =
+      Math.round(activePackages.reduce((sum, p) => sum + p.totalCashAmount, 0) * 100) / 100;
+
+    return {
+      clientsCount,
+      unitsCount,
+      cashAmount,
+    };
   });
 
   // Filtres pour la vue Stock par Article & Taille
@@ -1719,6 +2258,67 @@ export class B2cOrderCounterComponent {
   confirmBuyerPackageDeliveryFromDetail(lines: readonly B2cOrderLineResponse[]): void {
     this.selectedLineDetail.set(null);
     this.workflowStore.deliverBuyerPackage(lines);
+  }
+
+  confirmResetCashCounter(): void {
+    const metrics = this.cashCounterMetrics();
+    this.workflowStore.resetActiveClientCashCounter(
+      metrics.cashAmount,
+      metrics.clientsCount,
+      metrics.unitsCount,
+      () => this.showResetCashCounterModal.set(false)
+    );
+  }
+
+  openDeleteBuyerPackageModal(pkg: {
+    readonly buyerFullName: string;
+    readonly receiptNumberLabel: string;
+    readonly sectionName: string | null;
+    readonly totalQuantity: number;
+    readonly totalCashAmount: number;
+    readonly lines: readonly B2cOrderLineResponse[];
+  }): void {
+    this.buyerPackageToDelete.set(pkg);
+  }
+
+  requestDeleteBuyerLinesFromDetail(lines: readonly B2cOrderLineResponse[]): void {
+    if (lines.length === 0) {
+      return;
+    }
+    const first = lines[0];
+    const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
+    const totalCashAmount = lines.reduce((sum, l) => sum + Number(l.lineCashAmount || 0), 0);
+    const receiptNumberLabel =
+      lines.length <= 1 ? first.receiptNumber : `${first.receiptNumber} (+${lines.length - 1})`;
+    this.selectedLineDetail.set(null);
+    this.buyerPackageToDelete.set({
+      buyerFullName: first.buyerFullName,
+      receiptNumberLabel,
+      sectionName: first.sectionName ?? null,
+      totalQuantity,
+      totalCashAmount,
+      lines,
+    });
+  }
+
+  confirmDeleteBuyerPackage(): void {
+    const target = this.buyerPackageToDelete();
+    if (!target) {
+      return;
+    }
+    this.workflowStore.deleteBuyerPackage(target.lines, () => {
+      this.buyerPackageToDelete.set(null);
+    });
+  }
+
+  confirmDeleteGlobalOrder(): void {
+    const target = this.orderSummaryToDelete();
+    if (!target) {
+      return;
+    }
+    this.workflowStore.deleteB2cOrderById(target.id, () => {
+      this.orderSummaryToDelete.set(null);
+    });
   }
 
   openStockAdjustModal(): void {

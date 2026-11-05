@@ -22,7 +22,17 @@
           },
           "configurations": {
             "production": {
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": false
+                }
+              }
             },
             "development": {
               "optimization": false,
@@ -36,7 +46,7 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "uniform-app-frontend:build",
-            "allowedHosts": [".trycloudflare.com", ".pages.dev", "localhost", "127.0.0.1"]
+            "allowedHosts": [".trycloudflare.com", ".pages.dev", ".bidlab.ma", "bidlab.ma", "localhost", "127.0.0.1"]
           },
           "configurations": {
             "production": {

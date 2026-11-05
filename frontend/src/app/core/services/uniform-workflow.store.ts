@@ -12,6 +12,7 @@ import {
   B2cOrderDetailResponse,
   B2cOrderLineResponse,
   B2cOrderSummaryResponse,
+  CashCounterResponse,
   CatalogConfiguration,
   ClientResponse,
   ClientSectionInput,
@@ -38,6 +39,7 @@ import { CatalogFlyerPdfGeneratorService } from './catalog-flyer-pdf.service';
 import { UniformApiService } from './uniform-api.service';
 
 const CATALOG_CONFIG_STORAGE_KEY = 'uniform_app_catalog_config_v1';
+const CASH_COUNTERS_STORAGE_KEY = 'uniform_app_cash_counters_v1';
 
 @Injectable({ providedIn: 'root' })
 export class UniformWorkflowStore {
@@ -49,6 +51,9 @@ export class UniformWorkflowStore {
   private readonly router = inject(Router);
 
   private readonly _catalogConfig = signal<CatalogConfiguration>(this.loadCachedCatalogConfig());
+  private readonly _cashCountersByClient = signal<Readonly<Record<string, CashCounterResponse>>>(
+    this.loadCachedCashCounters()
+  );
   private readonly _clients = signal<readonly ClientResponse[]>([]);
   private readonly _selectedClientId = signal<string | null>(null);
   private readonly _catalogItems = signal<readonly B2cCatalogItemResponse[]>([]);
@@ -106,6 +111,25 @@ export class UniformWorkflowStore {
   readonly cashSaleModalOpen = this._cashSaleModalOpen.asReadonly();
   readonly newClientModalOpen = this._newClientModalOpen.asReadonly();
   readonly activeB2cSubView = this._activeB2cSubView.asReadonly();
+  readonly cashCountersByClient = this._cashCountersByClient.asReadonly();
+
+  readonly activeClientCashCounter = computed<CashCounterResponse | null>(() => {
+    const clientId = this._selectedClientId();
+    if (!clientId) {
+      return null;
+    }
+    return (
+      this._cashCountersByClient()[clientId] ?? {
+        clientId,
+        resetAt: null,
+        resetByFullName: null,
+        lastResetAmount: 0,
+        lastResetOrdersCount: 0,
+        lastResetUnitsCount: 0,
+        resetCount: 0,
+      }
+    );
+  });
 
   readonly totalAvailableStock = computed<number>(() =>
     this._stocks().reduce((sum, s) => sum + s.availableQuantity, 0)
@@ -297,6 +321,112 @@ export class UniformWorkflowStore {
     } catch {
       // Ignore storage errors
     }
+  }
+
+  private loadCachedCashCounters(): Readonly<Record<string, CashCounterResponse>> {
+    try {
+      const raw =
+        typeof localStorage !== 'undefined'
+          ? localStorage.getItem(CASH_COUNTERS_STORAGE_KEY)
+          : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, CashCounterResponse>;
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+      }
+    } catch {
+      // Ignore storage errors
+    }
+    return {};
+  }
+
+  private persistCachedCashCounters(map: Readonly<Record<string, CashCounterResponse>>): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(CASH_COUNTERS_STORAGE_KEY, JSON.stringify(map));
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }
+
+  refreshClientCashCounter(clientId: string): void {
+    this.api.getClientCashCounter(clientId).subscribe({
+      next: (counter) => {
+        if (counter && counter.clientId) {
+          this._cashCountersByClient.update((prev) => {
+            const next = { ...prev, [clientId]: counter };
+            this.persistCachedCashCounters(next);
+            return next;
+          });
+        }
+      },
+      error: () => {
+        // Fallback to cached localStorage state if endpoint unavailable
+      },
+    });
+  }
+
+  resetActiveClientCashCounter(
+    currentAmount: number,
+    currentOrdersCount: number,
+    currentUnitsCount: number,
+    onCompleted?: () => void
+  ): void {
+    const clientId = this._selectedClientId();
+    const client = this.selectedClient();
+    if (!clientId) {
+      return;
+    }
+    this.clearProblem();
+    const prevCounter = this.activeClientCashCounter();
+    const nowIso = new Date().toISOString();
+    const actorName = this.authStore.currentFullName() || 'Opérateur';
+    const optimisticCounter: CashCounterResponse = {
+      clientId,
+      resetAt: nowIso,
+      resetByFullName: actorName,
+      lastResetAmount: Math.round(currentAmount * 100) / 100,
+      lastResetOrdersCount: currentOrdersCount,
+      lastResetUnitsCount: currentUnitsCount,
+      resetCount: (prevCounter?.resetCount ?? 0) + 1,
+    };
+
+    this._cashCountersByClient.update((prev) => {
+      const next = { ...prev, [clientId]: optimisticCounter };
+      this.persistCachedCashCounters(next);
+      return next;
+    });
+
+    this.api
+      .resetClientCashCounter(clientId, {
+        lastResetAmount: optimisticCounter.lastResetAmount,
+        lastResetOrdersCount: optimisticCounter.lastResetOrdersCount,
+        lastResetUnitsCount: optimisticCounter.lastResetUnitsCount,
+      })
+      .subscribe({
+        next: (savedCounter) => {
+          if (savedCounter && savedCounter.clientId) {
+            this._cashCountersByClient.update((prev) => {
+              const next = { ...prev, [clientId]: savedCounter };
+              this.persistCachedCashCounters(next);
+              return next;
+            });
+          }
+          this._lastStockNotice.set(
+            `Compteur de caisse remis à zéro pour « ${client?.name ?? 'cet établissement'} » (Dernier arrêté : ${optimisticCounter.lastResetAmount.toFixed(2)} DH · ${currentOrdersCount} commande(s)).`
+          );
+          onCompleted?.();
+        },
+        error: () => {
+          // Optimistic state is already persisted locally
+          this._lastStockNotice.set(
+            `Compteur de caisse remis à zéro pour « ${client?.name ?? 'cet établissement'} » (Dernier arrêté : ${optimisticCounter.lastResetAmount.toFixed(2)} DH · ${currentOrdersCount} commande(s)).`
+          );
+          onCompleted?.();
+        },
+      });
   }
 
   refreshCatalogConfiguration(): void {
@@ -857,6 +987,7 @@ export class UniformWorkflowStore {
 
   refreshClientWorkspace(clientId: string): void {
     this._loading.set(true);
+    this.refreshClientCashCounter(clientId);
     this.api.listClientCatalogItems(clientId).subscribe({
       next: (items) => this._catalogItems.set(items),
       error: (err: unknown) => this.handleHttpError(err),
@@ -1197,6 +1328,92 @@ export class UniformWorkflowStore {
           this.handleHttpError(err);
         },
       });
+  }
+
+  deleteBuyerPackage(lines: readonly B2cOrderLineResponse[], onCompleted?: () => void): void {
+    const clientId = this._selectedClientId();
+    const order = this._activeB2cOrder();
+    if (!clientId || !order || lines.length === 0) {
+      return;
+    }
+    this.clearProblem();
+    this._loading.set(true);
+    const buyerName = lines[0]?.buyerFullName ?? 'client';
+    let lastUpdatedOrder: B2cOrderDetailResponse | null = null;
+
+    from(lines)
+      .pipe(concatMap((line) => this.api.deleteB2cOrderLine(clientId, order.id, line.id)))
+      .subscribe({
+        next: (updated) => {
+          lastUpdatedOrder = updated;
+        },
+        complete: () => {
+          this._loading.set(false);
+          if (lastUpdatedOrder) {
+            this._activeB2cOrder.set(lastUpdatedOrder);
+          } else {
+            this.loadB2cOrderDetail(clientId, order.id);
+          }
+          this.api.listB2cOrders(clientId).subscribe({
+            next: (orders) => this._b2cOrders.set(orders),
+          });
+          if (this.authStore.isAdmin()) {
+            this.refreshClientStocks();
+          }
+          this._lastStockNotice.set(
+            `La commande du client « ${buyerName} » a été supprimée avec succès.`
+          );
+          onCompleted?.();
+        },
+        error: (err: unknown) => {
+          this._loading.set(false);
+          this.loadB2cOrderDetail(clientId, order.id);
+          this.api.listB2cOrders(clientId).subscribe({
+            next: (orders) => this._b2cOrders.set(orders),
+          });
+          this.handleHttpError(err);
+        },
+      });
+  }
+
+  deleteB2cOrderById(orderId: string, onCompleted?: () => void): void {
+    const clientId = this._selectedClientId();
+    if (!clientId || !orderId) {
+      return;
+    }
+    const targetSummary = this._b2cOrders().find((o) => o.id === orderId);
+    const orderLabel = targetSummary?.orderNumber ?? orderId;
+    this.clearProblem();
+    this._loading.set(true);
+
+    this.api.deleteB2cOrder(clientId, orderId).subscribe({
+      next: () => {
+        this._loading.set(false);
+        this.api.listB2cOrders(clientId).subscribe({
+          next: (orders) => {
+            this._b2cOrders.set(orders);
+            const nextOrder = orders[0] ?? null;
+            if (nextOrder) {
+              this.loadB2cOrderDetail(clientId, nextOrder.id);
+            } else {
+              this._activeB2cOrder.set(null);
+            }
+          },
+        });
+        if (this.authStore.isAdmin()) {
+          this.refreshClientStocks();
+          this.refreshB2bOrders(clientId);
+        }
+        this._lastStockNotice.set(
+          `La commande globale « ${orderLabel} » a été supprimée de l'historique.`
+        );
+        onCompleted?.();
+      },
+      error: (err: unknown) => {
+        this._loading.set(false);
+        this.handleHttpError(err);
+      },
+    });
   }
 
   downloadPackingListPdf(orderId?: string): void {

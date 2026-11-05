@@ -310,6 +310,27 @@ public final class B2cOrder {
         return targetLine;
     }
 
+    public B2cOrderLine removeLine(UUID lineId, Instant now) {
+        B2cOrderLine targetLine = this.lines.stream()
+                .filter(l -> l.id().equals(lineId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "B2C order line %s not found in order %s.".formatted(lineId, id)
+                ));
+        this.lines.removeIf(l -> l.id().equals(lineId));
+        recalculateTotals();
+        this.updatedAt = now != null ? now : Instant.now();
+        if (this.status == B2cOrderStatus.DELIVERED
+                && this.lines.stream().anyMatch(l -> !l.isDelivered())) {
+            this.status = B2cOrderStatus.IN_DELIVERY;
+        } else if (this.status == B2cOrderStatus.IN_DELIVERY
+                && !this.lines.isEmpty()
+                && this.lines.stream().allMatch(B2cOrderLine::isDelivered)) {
+            this.status = B2cOrderStatus.DELIVERED;
+        }
+        return targetLine;
+    }
+
     public Map<GarmentVariant, Integer> aggregateDemandedQuantitiesByVariant() {
         Map<GarmentVariant, Integer> aggregated = new LinkedHashMap<>();
         for (B2cOrderLine line : this.lines) {

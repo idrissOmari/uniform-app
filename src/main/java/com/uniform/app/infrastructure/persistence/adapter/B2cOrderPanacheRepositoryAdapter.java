@@ -44,4 +44,9 @@ public class B2cOrderPanacheRepositoryAdapter
                 .map(mapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public void deleteByClientIdAndId(UUID clientId, UUID orderId) {
+        delete("clientId = ?1 and id = ?2", clientId, orderId);
+    }
 }

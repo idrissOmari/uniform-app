@@ -13,6 +13,7 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -179,5 +180,30 @@ public class B2cOrderResource {
         UUID operatorUserId = securityActorResolver.resolveCurrentActorUserId();
         B2cOrder updated = b2cOrderUseCase.markB2cOrderLineDelivered(clientId, orderId, lineId, operatorUserId);
         return dtoMapper.toB2cOrderDetailResponse(updated);
+    }
+
+    @DELETE
+    @Path("/{orderId}/lines/{lineId}")
+    @RolesAllowed({"ROLE_ADMIN", "ADMIN"})
+    public B2cOrderDetailResponse deleteB2cOrderLine(
+            @PathParam("clientId") UUID clientId,
+            @PathParam("orderId") UUID orderId,
+            @PathParam("lineId") UUID lineId
+    ) {
+        UUID adminUserId = securityActorResolver.resolveCurrentActorUserId();
+        B2cOrder updated = b2cOrderUseCase.deleteB2cOrderLine(clientId, orderId, lineId, adminUserId);
+        return dtoMapper.toB2cOrderDetailResponse(updated);
+    }
+
+    @DELETE
+    @Path("/{orderId}")
+    @RolesAllowed({"ROLE_ADMIN", "ADMIN"})
+    public Response deleteB2cOrder(
+            @PathParam("clientId") UUID clientId,
+            @PathParam("orderId") UUID orderId
+    ) {
+        UUID adminUserId = securityActorResolver.resolveCurrentActorUserId();
+        b2cOrderUseCase.deleteB2cOrder(clientId, orderId, adminUserId);
+        return Response.noContent().build();
     }
 }

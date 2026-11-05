@@ -360,6 +360,7 @@ function createInitialState() {
     ],
     b2cOrders: [],
     b2bOrders: [],
+    cashCounters: {},
     catalogConfig: DEFAULT_CATALOG_CONFIG,
     seq: 100,
   };
@@ -1356,8 +1357,47 @@ export async function onRequest(context) {
   }
 
   // =========================================================================
-  // 6. CLIENT CATALOG, STOCKS & FLYER PDF
+  // 6. CLIENT CATALOG, STOCKS, CASH COUNTER & FLYER PDF
   // =========================================================================
+  const cashCounterMatch = path.match(/^\/api\/v1\/clients\/([^/]+)\/cash-counter(?:\/(reset))?$/);
+  if (cashCounterMatch) {
+    const clientId = cashCounterMatch[1];
+    const isReset = cashCounterMatch[2] === 'reset';
+    const client = state.clients.find((c) => c.id === clientId);
+    if (!client) {
+      return problemResponse(404, 'RESOURCE_NOT_FOUND', 'Client introuvable', 'Établissement introuvable.', path, origin);
+    }
+    state.cashCounters = state.cashCounters || {};
+    const existingCounter = state.cashCounters[clientId] || {
+      clientId,
+      resetAt: null,
+      resetByFullName: null,
+      lastResetAmount: 0,
+      lastResetOrdersCount: 0,
+      lastResetUnitsCount: 0,
+      resetCount: 0,
+    };
+
+    if (!isReset && method === 'GET') {
+      return jsonResponse(existingCounter, 200, origin);
+    }
+
+    if (isReset && method === 'POST') {
+      const updatedCounter = {
+        clientId,
+        resetAt: new Date().toISOString(),
+        resetByFullName: actor?.fullName || actor?.username || 'Opérateur',
+        lastResetAmount: round2(body?.lastResetAmount ?? existingCounter.lastResetAmount ?? 0),
+        lastResetOrdersCount: Math.max(0, Number(body?.lastResetOrdersCount ?? 0)),
+        lastResetUnitsCount: Math.max(0, Number(body?.lastResetUnitsCount ?? 0)),
+        resetCount: Number(existingCounter.resetCount || 0) + 1,
+      };
+      state.cashCounters[clientId] = updatedCounter;
+      await saveState(env, state);
+      return jsonResponse(updatedCounter, 200, origin);
+    }
+  }
+
   const clientCatalogMatch = path.match(/^\/api\/v1\/clients\/([^/]+)\/(catalog-items|catalog-flyer-pdf|stocks)$/);
   if (clientCatalogMatch && method === 'GET') {
     const clientId = clientCatalogMatch[1];
@@ -1431,7 +1471,7 @@ export async function onRequest(context) {
   }
 
   const b2cOrderMatch = path.match(
-    /^\/api\/v1\/clients\/([^/]+)\/b2c-orders\/([^/]+)(?:\/(lines|packing-list-pdf|move-to-production|move-to-delivery)(?:\/([^/]+)\/(receipt-pdf|deliver))?)?$/
+    /^\/api\/v1\/clients\/([^/]+)\/b2c-orders\/([^/]+)(?:\/(lines|packing-list-pdf|move-to-production|move-to-delivery)(?:\/([^/]+)(?:\/(receipt-pdf|deliver))?)?)?$/
   );
   if (b2cOrderMatch) {
     const clientId = b2cOrderMatch[1];
@@ -1441,12 +1481,74 @@ export async function onRequest(context) {
     const lineAction = b2cOrderMatch[5] || null;
 
     const client = state.clients.find((c) => c.id === clientId);
-    const order = state.b2cOrders.find((o) => o.id === orderId && o.clientId === clientId);
+    const orderIdx = state.b2cOrders.findIndex((o) => o.id === orderId && o.clientId === clientId);
+    const order = orderIdx >= 0 ? state.b2cOrders[orderIdx] : null;
     if (!client || !order) {
       return problemResponse(404, 'RESOURCE_NOT_FOUND', 'Commande introuvable', 'Commande B2C introuvable.', path, origin);
     }
 
     if (!subAction && method === 'GET') {
+      return jsonResponse(toB2cOrderDetail(order), 200, origin);
+    }
+
+    if (!subAction && method === 'DELETE') {
+      const forbidden = assertAdmin(actor, path, origin);
+      if (forbidden) return forbidden;
+      // Restore stock for any DELIVERED lines in this order
+      const now = new Date().toISOString();
+      for (const line of order.lines || []) {
+        if (line.lineStatus === 'DELIVERED') {
+          const stock = state.stocks.find(
+            (s) =>
+              s.clientId === clientId &&
+              s.catalogItemId === line.catalogItemId &&
+              s.gender === line.gender &&
+              s.size === line.size
+          );
+          if (stock) {
+            stock.availableQuantity += Number(line.quantity || 0);
+            stock.updatedAt = now;
+          }
+        }
+      }
+      state.b2cOrders.splice(orderIdx, 1);
+      state.b2bOrders = state.b2bOrders.filter((po) => po.b2cOrderId !== orderId);
+      await saveState(env, state);
+      return jsonResponse(null, 204, origin);
+    }
+
+    if (subAction === 'lines' && lineId && !lineAction && method === 'DELETE') {
+      const forbidden = assertAdmin(actor, path, origin);
+      if (forbidden) return forbidden;
+      const lineIdx = order.lines.findIndex((l) => l.id === lineId);
+      if (lineIdx === -1) {
+        return problemResponse(404, 'RESOURCE_NOT_FOUND', 'Ligne introuvable', 'Ligne de commande introuvable.', path, origin);
+      }
+      const removedLine = order.lines[lineIdx];
+      if (removedLine.lineStatus === 'DELIVERED') {
+        const stock = state.stocks.find(
+          (s) =>
+            s.clientId === clientId &&
+            s.catalogItemId === removedLine.catalogItemId &&
+            s.gender === removedLine.gender &&
+            s.size === removedLine.size
+        );
+        if (stock) {
+          stock.availableQuantity += Number(removedLine.quantity || 0);
+          stock.updatedAt = new Date().toISOString();
+        }
+      }
+      order.lines.splice(lineIdx, 1);
+      if (order.status === 'DELIVERED' && order.lines.some((l) => l.lineStatus !== 'DELIVERED')) {
+        order.status = 'IN_DELIVERY';
+      } else if (
+        order.status === 'IN_DELIVERY' &&
+        order.lines.length > 0 &&
+        order.lines.every((l) => l.lineStatus === 'DELIVERED')
+      ) {
+        order.status = 'DELIVERED';
+      }
+      await saveState(env, state);
       return jsonResponse(toB2cOrderDetail(order), 200, origin);
     }
 

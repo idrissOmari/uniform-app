@@ -564,6 +564,39 @@ public class B2cB2bWorkflowService implements ClientCatalogUseCase, B2cOrderUseC
         return savedOrder;
     }
 
+    @Override
+    public B2cOrder deleteB2cOrderLine(UUID clientId, UUID orderId, UUID lineId, UUID adminUserId) {
+        B2cOrder order = requireB2cOrder(clientId, orderId);
+        Instant now = Instant.now();
+        B2cOrderLine removedLine = order.removeLine(lineId, now);
+        if (removedLine.isDelivered()) {
+            clientStockRepositoryPort
+                    .findByClientIdAndVariant(clientId, removedLine.variant())
+                    .ifPresent(stock -> {
+                        stock.credit(removedLine.quantity(), now);
+                        clientStockRepositoryPort.save(clientId, stock);
+                    });
+        }
+        return b2cOrderRepositoryPort.save(clientId, order);
+    }
+
+    @Override
+    public void deleteB2cOrder(UUID clientId, UUID orderId, UUID adminUserId) {
+        B2cOrder order = requireB2cOrder(clientId, orderId);
+        Instant now = Instant.now();
+        for (B2cOrderLine line : order.lines()) {
+            if (line.isDelivered()) {
+                clientStockRepositoryPort
+                        .findByClientIdAndVariant(clientId, line.variant())
+                        .ifPresent(stock -> {
+                            stock.credit(line.quantity(), now);
+                            clientStockRepositoryPort.save(clientId, stock);
+                        });
+            }
+        }
+        b2cOrderRepositoryPort.deleteByClientIdAndId(clientId, orderId);
+    }
+
     // =========================================================================
     // 3. B2B Supplier Purchase Order Use Cases
     // =========================================================================

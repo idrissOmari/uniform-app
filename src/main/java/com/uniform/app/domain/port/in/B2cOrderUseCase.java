@@ -27,6 +27,14 @@ public interface B2cOrderUseCase {
 
     B2cOrder markB2cOrderLineDelivered(UUID clientId, UUID orderId, UUID lineId, UUID operatorUserId);
 
+    default B2cOrder deleteB2cOrderLine(UUID clientId, UUID orderId, UUID lineId, UUID adminUserId) {
+        throw new UnsupportedOperationException("deleteB2cOrderLine not implemented");
+    }
+
+    default void deleteB2cOrder(UUID clientId, UUID orderId, UUID adminUserId) {
+        throw new UnsupportedOperationException("deleteB2cOrder not implemented");
+    }
+
     record AddB2cOrderLineCommand(
             UUID catalogItemId,
             UUID sectionId,

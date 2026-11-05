@@ -10,6 +10,7 @@ import {
   B2cOrderDetailResponse,
   B2cOrderLineResponse,
   B2cOrderSummaryResponse,
+  CashCounterResponse,
   CatalogConfiguration,
   ClientResponse,
   ClientSectionInput,
@@ -312,6 +313,38 @@ export class UniformApiService {
     return this.http.post<B2cOrderDetailResponse>(
       `/api/v1/clients/${clientId}/b2c-orders/${orderId}/lines/${lineId}/deliver`,
       {}
+    );
+  }
+
+  deleteB2cOrder(clientId: string, orderId: string): Observable<void> {
+    return this.http.delete<void>(`/api/v1/clients/${clientId}/b2c-orders/${orderId}`);
+  }
+
+  deleteB2cOrderLine(
+    clientId: string,
+    orderId: string,
+    lineId: string
+  ): Observable<B2cOrderDetailResponse> {
+    return this.http.delete<B2cOrderDetailResponse>(
+      `/api/v1/clients/${clientId}/b2c-orders/${orderId}/lines/${lineId}`
+    );
+  }
+
+  getClientCashCounter(clientId: string): Observable<CashCounterResponse> {
+    return this.http.get<CashCounterResponse>(`/api/v1/clients/${clientId}/cash-counter`);
+  }
+
+  resetClientCashCounter(
+    clientId: string,
+    payload: {
+      lastResetAmount: number;
+      lastResetOrdersCount: number;
+      lastResetUnitsCount: number;
+    }
+  ): Observable<CashCounterResponse> {
+    return this.http.post<CashCounterResponse>(
+      `/api/v1/clients/${clientId}/cash-counter/reset`,
+      payload
     );
   }
 

@@ -188,6 +188,47 @@ export class UniformWorkflowStore {
     return this._clients().find((c) => c.id === id) ?? null;
   });
 
+  readonly operatorUsers = computed<readonly UserAccountResponse[]>(() =>
+    this._users().filter((u) => u.role === 'ROLE_USER')
+  );
+
+  readonly assignedOperatorsForSelectedClient = computed<readonly UserAccountResponse[]>(() => {
+    const id = this._selectedClientId();
+    if (!id) {
+      return [];
+    }
+    return this._users().filter((u) => u.role === 'ROLE_USER' && u.assignedClientId === id);
+  });
+
+  getAssignedOperatorSummary(clientId: string): string {
+    const assigned = this._users().filter(
+      (u) => u.role === 'ROLE_USER' && u.assignedClientId === clientId
+    );
+    if (assigned.length === 0) {
+      return 'Aucun opérateur affecté';
+    }
+    return assigned.map((u) => u.fullName).join(', ');
+  }
+
+  assignOperatorToSelectedClient(userId: string, onSaved?: () => void): void {
+    const clientId = this._selectedClientId();
+    const client = this.selectedClient();
+    if (!clientId || !userId) {
+      return;
+    }
+    this.clearProblem();
+    this.api.updateUserAssignedClient(userId, clientId).subscribe({
+      next: (updatedUser) => {
+        this.refreshUsers();
+        this._lastStockNotice.set(
+          `Opérateur « ${updatedUser.fullName} » affecté à l'établissement « ${client?.name ?? ''} ».`
+        );
+        onSaved?.();
+      },
+      error: (err: unknown) => this.handleHttpError(err),
+    });
+  }
+
   readonly moqProgressPercentage = computed<number>(() => {
     const order = this._activeB2cOrder();
     if (!order || order.clientMoqSnapshot <= 0) {

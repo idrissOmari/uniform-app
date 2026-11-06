@@ -360,24 +360,89 @@ import { isImageUrl } from './core/utils/image-upload.util';
           <main class="mx-auto w-full max-w-[1400px] flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 lg:p-8 lg:pb-10">
             <!-- ESPACE DE PILOTAGE PAR ÉTABLISSEMENT (affiché uniquement si un établissement est disponible et sélectionné) -->
             @if (authStore.isAdmin() && isEstablishmentWorkspaceRoute() && workflowStore.selectedClient(); as activeClient) {
+              @let assignedOperators = workflowStore.assignedOperatorsForSelectedClient();
               <div class="rounded-2xl border border-indigo-100/90 bg-white p-4 sm:p-5 shadow-[0_4px_24px_-4px_rgba(79,70,229,0.08)] space-y-3.5 sm:space-y-4">
                 <div class="flex flex-col gap-3.5 xl:flex-row xl:items-center xl:justify-between">
-                  <!-- Sélecteur de l'établissement à piloter -->
-                  <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center">
-                    <label class="text-xs font-extrabold uppercase tracking-wider text-indigo-700 shrink-0">
-                      🏫 Établissement :
-                    </label>
-                    <select
-                      class="w-full sm:w-80 rounded-xl border border-indigo-200/90 bg-indigo-50/40 px-3.5 py-2.5 text-sm font-bold text-slate-900 shadow-2xs focus:border-indigo-600 focus:bg-white focus:outline-none"
-                      [value]="workflowStore.selectedClientId() ?? ''"
-                      (change)="workflowStore.selectClient($any($event.target).value)"
-                    >
-                      @for (client of workflowStore.clients(); track client.id) {
-                        <option [value]="client.id">
-                          {{ client.name }} ({{ ('clientType.short.' + (client.clientType || 'SECONDARY_SCHOOL')) | t }})
-                        </option>
+                  <!-- Sélecteur de l'établissement à piloter + Personne affectée -->
+                  <div class="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div class="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                      <label class="text-xs font-extrabold uppercase tracking-wider text-indigo-700 shrink-0">
+                        🏫 Établissement :
+                      </label>
+                      <select
+                        class="w-full sm:w-80 rounded-xl border border-indigo-200/90 bg-indigo-50/40 px-3.5 py-2.5 text-sm font-bold text-slate-900 shadow-2xs focus:border-indigo-600 focus:bg-white focus:outline-none"
+                        [value]="workflowStore.selectedClientId() ?? ''"
+                        (change)="onSelectClient($any($event.target).value)"
+                      >
+                        @for (client of workflowStore.clients(); track client.id) {
+                          <option [value]="client.id">
+                            {{ client.name }} ({{ ('clientType.short.' + (client.clientType || 'SECONDARY_SCHOOL')) | t }}) — {{ workflowStore.getAssignedOperatorSummary(client.id) }}
+                          </option>
+                        }
+                      </select>
+                    </div>
+
+                    <!-- Affichage de la personne affectée ou choix d'un opérateur si non affecté -->
+                    <div class="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2 text-xs">
+                      <span class="font-bold text-slate-600">👤 Personne affectée :</span>
+                      @if (assignedOperators.length > 0 && !editingOperatorAssignment()) {
+                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-100/90 px-2.5 py-1 font-extrabold text-[#15803d]">
+                          <span>✓</span>
+                          <span>{{ workflowStore.getAssignedOperatorSummary(activeClient.id) }}</span>
+                        </span>
+                        <button
+                          type="button"
+                          class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+                          (click)="openOperatorSelector(assignedOperators[0]?.id ?? '')"
+                        >
+                          Changer
+                        </button>
+                      } @else {
+                        @if (assignedOperators.length === 0) {
+                          <span class="inline-flex items-center gap-1 rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                            Non affecté
+                          </span>
+                        }
+                        @if (workflowStore.operatorUsers().length > 0) {
+                          <select
+                            class="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-900 focus:border-indigo-600 focus:outline-none"
+                            [value]="selectedOperatorToAssign()"
+                            (change)="selectedOperatorToAssign.set($any($event.target).value)"
+                          >
+                            <option value="">— Choisir un opérateur —</option>
+                            @for (op of workflowStore.operatorUsers(); track op.id) {
+                              <option [value]="op.id">
+                                {{ op.fullName }} (@{{ op.username }})
+                              </option>
+                            }
+                          </select>
+                          <button
+                            type="button"
+                            [disabled]="!selectedOperatorToAssign()"
+                            class="rounded-lg bg-[#16803c] px-2.5 py-1 text-xs font-extrabold text-white shadow-2xs hover:bg-[#146c32] disabled:cursor-not-allowed disabled:opacity-45 cursor-pointer"
+                            (click)="confirmOperatorAssignment()"
+                          >
+                            Affecter
+                          </button>
+                          @if (editingOperatorAssignment()) {
+                            <button
+                              type="button"
+                              class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                              (click)="editingOperatorAssignment.set(false)"
+                            >
+                              Annuler
+                            </button>
+                          }
+                        } @else {
+                          <a
+                            routerLink="/admin/users"
+                            class="rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-bold text-indigo-700 hover:bg-indigo-50"
+                          >
+                            + Créer un opérateur
+                          </a>
+                        }
                       }
-                    </select>
+                    </div>
                   </div>
 
                   <!-- Informations de l'établissement + Bouton Imprimer Flyer juste à côté -->
@@ -575,6 +640,30 @@ export class AppComponent {
   private readonly router = inject(Router);
 
   readonly mobileMenuOpen = signal<boolean>(false);
+  readonly selectedOperatorToAssign = signal<string>('');
+  readonly editingOperatorAssignment = signal<boolean>(false);
+
+  onSelectClient(clientId: string): void {
+    this.editingOperatorAssignment.set(false);
+    this.selectedOperatorToAssign.set('');
+    this.workflowStore.selectClient(clientId);
+  }
+
+  openOperatorSelector(currentOperatorId: string): void {
+    this.selectedOperatorToAssign.set(currentOperatorId);
+    this.editingOperatorAssignment.set(true);
+  }
+
+  confirmOperatorAssignment(): void {
+    const operatorId = this.selectedOperatorToAssign();
+    if (!operatorId) {
+      return;
+    }
+    this.workflowStore.assignOperatorToSelectedClient(operatorId, () => {
+      this.editingOperatorAssignment.set(false);
+      this.selectedOperatorToAssign.set('');
+    });
+  }
 
   readonly userInitials = computed<string>(() => {
     const fullName = this.authStore.currentFullName().trim();

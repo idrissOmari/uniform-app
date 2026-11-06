@@ -37,7 +37,6 @@ import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store
             <input
               type="text"
               formControlName="identifier"
-              [placeholder]="'auth.login.identifierPlaceholder' | t"
               autocomplete="username"
               class="mt-1 w-full rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
               [class.border-rose-400]="isInvalid('identifier')"
@@ -57,7 +56,6 @@ import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store
             <input
               type="password"
               formControlName="password"
-              placeholder="••••••••"
               autocomplete="current-password"
               class="mt-1 w-full rounded-lg border px-3.5 py-2 text-sm focus:outline-none"
               [class.border-rose-400]="isInvalid('password')"
@@ -82,30 +80,6 @@ import { UniformWorkflowStore } from '../../core/services/uniform-workflow.store
             }
           </button>
         </form>
-
-        <!-- Aide d'initialisation -->
-        <div class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 text-xs text-slate-700">
-          <div class="font-bold text-slate-900">{{ 'auth.login.initBoxTitle' | t }}</div>
-          <p class="mt-1 text-slate-500">
-            {{ 'auth.login.initAdminHelp' | t }} ({{ 'role.ROLE_ADMIN' | t }})
-          </p>
-          <div class="mt-2.5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50 cursor-pointer"
-              (click)="fillCredentials('admin', 'admin')"
-            >
-              {{ 'auth.login.fillAdmin' | t }}
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-emerald-200 bg-white px-3 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-50 cursor-pointer"
-              (click)="fillCredentials('operateur', 'operateur')"
-            >
-              Sara El Amrani (operateur:operateur)
-            </button>
-          </div>
-        </div>
         </div>
       </div>
     </div>
@@ -129,11 +103,6 @@ export class LoginComponent {
   isInvalid(controlName: 'identifier' | 'password'): boolean {
     const control = this.loginForm.controls[controlName];
     return control.invalid && (control.touched || control.dirty || this.submitted());
-  }
-
-  fillCredentials(identifier: string, password: string): void {
-    this.loginForm.setValue({ identifier, password });
-    this.submitted.set(false);
   }
 
   onSubmit(): void {

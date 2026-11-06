@@ -273,16 +273,10 @@ import {
                       {{ user.createdAt | date: 'dd/MM/yyyy HH:mm' }}
                     </td>
                     <td class="px-5 py-4 text-right">
-                      @if (user.username === 'admin' && user.invitationStatus !== 'PENDING_INVITATION') {
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                          {{ 'adminUsers.rootAdminLabel' | t }}
-                        </span>
-                      } @else {
-                        <app-table-action-menu
-                          [menuTitle]="user.fullName"
-                          [actions]="getUserActions(user)"
-                        />
-                      }
+                      <app-table-action-menu
+                        [menuTitle]="user.fullName"
+                        [actions]="getUserActions(user)"
+                      />
                     </td>
                   </tr>
                 }
@@ -769,7 +763,7 @@ export class AdminUserManagementComponent {
         icon: '✉️',
         onSelect: () => this.workflowStore.resendUserInvitation(user.id),
       });
-    } else if (user.username !== 'admin') {
+    } else {
       items.push({
         label: user.active ? 'Désactiver ce compte' : 'Réactiver ce compte',
         icon: user.active ? '⛔' : '✅',
@@ -778,14 +772,12 @@ export class AdminUserManagementComponent {
       });
     }
 
-    if (user.username !== 'admin') {
-      items.push({
-        label: "Supprimer l'utilisateur",
-        icon: '🗑️',
-        variant: 'danger',
-        onSelect: () => this.deletingUser.set(user),
-      });
-    }
+    items.push({
+      label: "Supprimer l'utilisateur",
+      icon: '🗑️',
+      variant: 'danger',
+      onSelect: () => this.deletingUser.set(user),
+    });
 
     return items;
   }

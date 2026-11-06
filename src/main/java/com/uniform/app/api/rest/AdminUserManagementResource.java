@@ -215,11 +215,6 @@ public class AdminUserManagementResource {
         if (user == null) {
             throw new ResourceNotFoundException("Utilisateur introuvable : " + userId);
         }
-        if ("admin".equalsIgnoreCase(user.getUsername()) && !request.active()) {
-            throw new DomainValidationException(
-                    "Le compte administrateur initial ('admin') ne peut pas être désactivé."
-            );
-        }
         if ("PENDING_INVITATION".equals(user.getInvitationStatus())) {
             throw new DomainValidationException(
                     "Ce compte est en attente d'invitation par email. Il sera activé lorsque l'utilisateur définira son mot de passe."
@@ -274,11 +269,6 @@ public class AdminUserManagementResource {
         if (user == null) {
             throw new ResourceNotFoundException("Utilisateur introuvable : " + userId);
         }
-        if ("admin".equalsIgnoreCase(user.getUsername()) && request.role() != UserRole.ROLE_ADMIN) {
-            throw new DomainValidationException(
-                    "Le profil du compte administrateur principal ('admin') ne peut pas être rétrogradé."
-            );
-        }
 
         UUID resolvedAssignedClientId = null;
         if (request.role() == UserRole.ROLE_USER) {
@@ -314,11 +304,6 @@ public class AdminUserManagementResource {
         AppUserJpaEntity user = entityManager.find(AppUserJpaEntity.class, userId);
         if (user == null) {
             throw new ResourceNotFoundException("Utilisateur introuvable : " + userId);
-        }
-        if ("admin".equalsIgnoreCase(user.getUsername())) {
-            throw new DomainValidationException(
-                    "Le compte administrateur principal ('admin') ne peut pas être supprimé."
-            );
         }
         entityManager.remove(user);
         entityManager.flush();

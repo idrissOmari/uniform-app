@@ -157,14 +157,10 @@ export const FR_DICTIONARY: Readonly<Record<string, string>> = {
   'auth.login.title': 'Connexion à BidLab',
   'auth.login.subtitle': 'Authentifiez-vous pour accéder à votre espace métier selon votre profil',
   'auth.login.identifierLabel': 'Identifiant ou Adresse Email',
-  'auth.login.identifierPlaceholder': 'ex: admin ou utilisateur@bidlab.ma',
+  'auth.login.identifierPlaceholder': '',
   'auth.login.passwordLabel': 'Mot de passe',
   'auth.login.submit': 'Se connecter',
   'auth.login.submitting': 'Vérification des identifiants...',
-  'auth.login.initBoxTitle': "Comptes d'initialisation disponibles :",
-  'auth.login.initAdminHelp': 'Compte Administrateur initial : admin / admin',
-  'auth.login.fillAdmin': 'Remplir Administrateur (admin:admin)',
-  'auth.login.fillOperator': 'Remplir Opérateur (operateur:operateur)',
 
   // Activation d'invitation (/accept-invitation)
   'invitation.title': 'Activation de votre compte',

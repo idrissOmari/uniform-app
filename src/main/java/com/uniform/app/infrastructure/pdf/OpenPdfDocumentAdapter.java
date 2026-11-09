@@ -369,7 +369,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
 
             document.add(headerBanner);
 
-            // 2. Product Showcase Cards (2-column Lookbook Grid)
+            // 2. Product Showcase Cards (Adaptive Grid to ensure <= 2 pages)
             if (catalogItems.isEmpty()) {
                 Paragraph emptyMsg = new Paragraph(
                         "Aucun article n'est actuellement configuré dans le catalogue de cet établissement.",
@@ -378,23 +378,31 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
                 emptyMsg.setSpacingAfter(14f);
                 document.add(emptyMsg);
             } else {
-                PdfPTable grid = new PdfPTable(new float[]{1f, 1f});
+                int totalItems = catalogItems.size();
+                int columns = totalItems <= 12 ? 2 : (totalItems <= 24 ? 3 : 4);
+                float[] colWidths = new float[columns];
+                java.util.Arrays.fill(colWidths, 1f);
+                PdfPTable grid = new PdfPTable(colWidths);
                 grid.setWidthPercentage(100f);
-                grid.setSpacingAfter(12f);
+                grid.setSpacingAfter(totalItems > 8 ? 8f : 12f);
 
+                float wrapperPadding = totalItems > 12 ? 3f : (totalItems > 8 ? 4f : 5f);
                 for (CatalogItem item : catalogItems) {
                     PdfPCell cardWrapper = new PdfPCell();
                     cardWrapper.setBorder(Rectangle.NO_BORDER);
-                    cardWrapper.setPadding(5f);
-                    cardWrapper.addElement(buildProductLookbookCard(item));
+                    cardWrapper.setPadding(wrapperPadding);
+                    cardWrapper.addElement(buildProductLookbookCard(item, totalItems));
                     grid.addCell(cardWrapper);
                 }
 
-                if (catalogItems.size() % 2 != 0) {
-                    PdfPCell filler = new PdfPCell(new Phrase(" "));
-                    filler.setBorder(Rectangle.NO_BORDER);
-                    filler.setPadding(5f);
-                    grid.addCell(filler);
+                int remainder = totalItems % columns;
+                if (remainder != 0) {
+                    for (int f = 0; f < columns - remainder; f++) {
+                        PdfPCell filler = new PdfPCell(new Phrase(" "));
+                        filler.setBorder(Rectangle.NO_BORDER);
+                        filler.setPadding(wrapperPadding);
+                        grid.addCell(filler);
+                    }
                 }
 
                 document.add(grid);
@@ -426,9 +434,14 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         return out.toByteArray();
     }
 
-    private PdfPTable buildProductLookbookCard(CatalogItem item) {
+    private PdfPTable buildProductLookbookCard(CatalogItem item, int totalItemsCount) {
         PdfPTable card = new PdfPTable(1);
         card.setWidthPercentage(100f);
+
+        float imageHeight = totalItemsCount <= 6 ? 145f : (totalItemsCount <= 12 ? 92f : 68f);
+        float maxImgW = totalItemsCount <= 12 ? 220f : 140f;
+        float maxImgH = Math.max(52f, imageHeight - 16f);
+        float cellPadding = totalItemsCount <= 6 ? 10f : (totalItemsCount <= 12 ? 7f : 5f);
 
         // Top visual preview area
         PdfPCell imageCell = new PdfPCell();
@@ -438,14 +451,14 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         imageCell.setBorderWidthLeft(1f);
         imageCell.setBorderWidthRight(1f);
         imageCell.setBorderWidthBottom(0f);
-        imageCell.setPadding(10f);
+        imageCell.setPadding(cellPadding);
         imageCell.setHorizontalAlignment(Element.ALIGN_CENTER);
         imageCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
-        imageCell.setFixedHeight(145f);
+        imageCell.setFixedHeight(imageHeight);
 
         Image previewImg = resolveProductPreviewImage(item);
         if (previewImg != null) {
-            previewImg.scaleToFit(220f, 125f);
+            previewImg.scaleToFit(maxImgW, maxImgH);
             previewImg.setAlignment(Element.ALIGN_CENTER);
             imageCell.addElement(previewImg);
         }
@@ -459,7 +472,7 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         bodyCell.setBorderWidthLeft(1f);
         bodyCell.setBorderWidthRight(1f);
         bodyCell.setBorderWidthBottom(1f);
-        bodyCell.setPadding(10f);
+        bodyCell.setPadding(cellPadding);
 
         Paragraph categoryAndRef = new Paragraph();
         categoryAndRef.add(new Chunk(translateProductTypeFr(item.productType()).toUpperCase(Locale.ROOT), CARD_CATEGORY_FONT));

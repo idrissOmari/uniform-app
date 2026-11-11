@@ -45,10 +45,11 @@ export class CatalogFlyerPdfGeneratorService {
       })
     );
 
-    // Contrainte stricte : le catalogue PDF ne doit jamais dépasser 2 pages.
-    // Tous les produits sont répartis sur 1 page (jusqu'à 4 articles) ou 2 pages maximum (au-delà),
-    // en adaptant automatiquement la grille et les dimensions des cartes produits.
-    const totalPages = items.length <= 4 ? 1 : 2;
+    // Par défaut, tout le catalogue tient sur 1 seule page (jusqu'à 12 produits)
+    // en adaptant la grille et la taille des cartes.
+    // On ne passe sur 2 pages (maximum absolu) que s'il y a vraiment beaucoup de produits (> 12).
+    const SINGLE_PAGE_MAX_ITEMS = 12;
+    const totalPages = items.length <= SINGLE_PAGE_MAX_ITEMS ? 1 : 2;
     const itemsPerPage = Math.max(1, Math.ceil(items.length / totalPages));
     const jpegPages: Uint8Array[] = [];
 
@@ -67,7 +68,7 @@ export class CatalogFlyerPdfGeneratorService {
         pageIndex + 1,
         totalPages,
         items.length,
-        itemsPerPage
+        pageItems.length
       );
       jpegPages.push(jpegBytes);
     }

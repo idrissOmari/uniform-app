@@ -379,14 +379,14 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
                 document.add(emptyMsg);
             } else {
                 int totalItems = catalogItems.size();
-                int columns = totalItems <= 12 ? 2 : (totalItems <= 24 ? 3 : 4);
+                int columns = totalItems <= 4 ? 2 : (totalItems <= 9 ? 3 : 4);
                 float[] colWidths = new float[columns];
                 java.util.Arrays.fill(colWidths, 1f);
                 PdfPTable grid = new PdfPTable(colWidths);
                 grid.setWidthPercentage(100f);
-                grid.setSpacingAfter(totalItems > 8 ? 8f : 12f);
+                grid.setSpacingAfter(totalItems > 6 ? 6f : 12f);
 
-                float wrapperPadding = totalItems > 12 ? 3f : (totalItems > 8 ? 4f : 5f);
+                float wrapperPadding = totalItems > 9 ? 3f : (totalItems > 4 ? 4f : 5f);
                 for (CatalogItem item : catalogItems) {
                     PdfPCell cardWrapper = new PdfPCell();
                     cardWrapper.setBorder(Rectangle.NO_BORDER);
@@ -438,10 +438,10 @@ public class OpenPdfDocumentAdapter implements PdfDocumentPort {
         PdfPTable card = new PdfPTable(1);
         card.setWidthPercentage(100f);
 
-        float imageHeight = totalItemsCount <= 6 ? 145f : (totalItemsCount <= 12 ? 92f : 68f);
-        float maxImgW = totalItemsCount <= 12 ? 220f : 140f;
-        float maxImgH = Math.max(52f, imageHeight - 16f);
-        float cellPadding = totalItemsCount <= 6 ? 10f : (totalItemsCount <= 12 ? 7f : 5f);
+        float imageHeight = totalItemsCount <= 4 ? 145f : (totalItemsCount <= 6 ? 95f : (totalItemsCount <= 12 ? 72f : 60f));
+        float maxImgW = totalItemsCount <= 4 ? 220f : (totalItemsCount <= 9 ? 150f : 115f);
+        float maxImgH = Math.max(46f, imageHeight - 14f);
+        float cellPadding = totalItemsCount <= 4 ? 10f : (totalItemsCount <= 9 ? 6f : 4.5f);
 
         // Top visual preview area
         PdfPCell imageCell = new PdfPCell();
